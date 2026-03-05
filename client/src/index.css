@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans overflow-hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .custom-bg {
+    background: linear-gradient(133deg, rgba(42, 123, 155, 1) 0%, rgba(87, 199, 133, 1) 50%, rgba(36, 128, 209, 1) 100%);
+  }
+  .glass {
+    @apply bg-white/85 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.1)];
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
