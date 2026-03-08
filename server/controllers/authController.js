@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const axios = require('axios'); // <-- NEW: Required for Google Auth
 
 // --- Helper Function: Send Email ---
 const sendEmail = async (options) => {
@@ -155,5 +156,62 @@ exports.resetPassword = async (req, res) => {
     } catch (error) {
         console.error('Reset Password Error:', error);
         res.status(500).json({ message: 'Server error during password reset.' });
+    }
+};
+
+// --- 🛡️ NEW: GOOGLE OAUTH LOGIC 🛡️ ---
+// @desc    Authenticate with Google OAuth
+// @route   POST /api/auth/google
+exports.googleLogin = async (req, res) => {
+    try {
+        const { access_token } = req.body;
+
+        if (!access_token) {
+            return res.status(400).json({ message: 'No access token provided.' });
+        }
+
+        // 1. Verify the token directly with Google's servers
+        const { data } = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${access_token}` }
+        });
+
+        const email = data.email;
+
+        // 2. Check if the user exists in our database
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // 3. If they don't exist, create a new 'pending' account
+            // We generate a massive random password since they will always use Google to log in
+            const randomPassword = crypto.randomBytes(20).toString('hex');
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(randomPassword, salt);
+
+            user = await User.create({
+                email,
+                password: hashedPassword,
+                role: 'pending' // Forces them to wait for Master Admin approval
+            });
+        }
+
+        if (user.isDisabled) {
+            return res.status(403).json({ message: 'Account disabled. Contact Admin.' });
+        }
+
+        // 4. Generate our app's JWT so they can access the Command Center
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            process.env.JWT_SECRET || 'fallback_super_secret_key_change_me',
+            { expiresIn: '12h' }
+        );
+
+        res.status(200).json({
+            token,
+            user: { id: user._id, email: user.email, role: user.role }
+        });
+
+    } catch (error) {
+        console.error('Google Auth Error:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Failed to authenticate with Google.' });
     }
 };

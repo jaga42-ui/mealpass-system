@@ -6,6 +6,7 @@ import { AuthContext } from './context/AuthContext';
 import Login from './pages/Login';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
+import ResetPassword from './pages/ResetPassword'; // <-- NEW IMPORT
 
 // Participant Pages
 import ParticipantLogin from './pages/ParticipantLogin';
@@ -14,7 +15,7 @@ import Portal from './pages/Portal';
 // A simple wrapper to protect routes from unauthenticated admins/volunteers
 const ProtectedRoute = ({ children }) => {
   const { user, isLoading } = useContext(AuthContext);
-  if (isLoading) return <div className="h-screen flex items-center justify-center text-white font-bold animate-pulse">Loading secure terminal...</div>;
+  if (isLoading) return <div className="h-screen flex items-center justify-center text-teal-400 font-bold animate-pulse">Loading secure terminal...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 };
@@ -25,8 +26,12 @@ function App() {
       <div className="h-screen w-full flex flex-col custom-bg text-slate-800 selection:bg-teal-500 selection:text-white">
         <Routes>
           {/* Admin / Volunteer Routes */}
-          <Route path="/login" element={<Login />} />
           <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          
+          {/* 🛡️ SECURE PASSWORD RECOVERY ROUTE 🛡️ */}
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+
           <Route 
             path="/dashboard" 
             element={
