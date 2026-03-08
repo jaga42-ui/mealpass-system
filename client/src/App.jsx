@@ -4,6 +4,7 @@ import { AuthContext } from './context/AuthContext';
 
 // Admin Pages
 import Login from './pages/Login';
+import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 
 // Participant Pages
@@ -25,6 +26,7 @@ function App() {
         <Routes>
           {/* Admin / Volunteer Routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Landing />} />
           <Route 
             path="/dashboard" 
             element={

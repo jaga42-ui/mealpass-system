@@ -22,7 +22,13 @@ const userSchema = new mongoose.Schema({
     isDisabled: { 
         type: Boolean, 
         default: false 
-    }
+    },
+    
+    // --- REQUIRED FOR FORGOT PASSWORD ---
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
+    // ------------------------------------
+    
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

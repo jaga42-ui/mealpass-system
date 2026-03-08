@@ -10,7 +10,7 @@ exports.getSettings = async (req, res) => {
     try {
         let settings = await Settings.findOne();
         if (!settings) {
-            settings = await Settings.create({}); // Create default if none exist
+            settings = await Settings.create({}); 
         }
         res.status(200).json(settings);
     } catch (error) {
@@ -41,7 +41,7 @@ exports.updateSettings = async (req, res) => {
 
 exports.bulkUploadParticipants = async (req, res) => {
     try {
-        const participants = req.body; // Expecting an array of objects from the React frontend Excel parser
+        const participants = req.body; 
         
         if (!Array.isArray(participants) || participants.length === 0) {
             return res.status(400).json({ message: 'No data provided.' });
@@ -52,11 +52,9 @@ exports.bulkUploadParticipants = async (req, res) => {
             name: p.name,
             category: p.category || 'Participant',
             department: p.department || 'N/A',
-            // Generate a secure key for every single person in the batch automatically
             totpSecret: speakeasy.generateSecret({ length: 20 }).base32 
         }));
 
-        // Insert ignoring duplicates (unordered bulk write)
         const result = await Participant.insertMany(formattedData, { ordered: false });
         
         res.status(201).json({ 
@@ -64,7 +62,6 @@ exports.bulkUploadParticipants = async (req, res) => {
             count: result.length 
         });
     } catch (error) {
-        // If some fail due to duplicate IDs, Mongoose throws an error but still inserts the rest if ordered: false
         if (error.code === 11000) {
             return res.status(207).json({ 
                 message: 'Partial upload complete. Skipped duplicate IDs.',
@@ -93,6 +90,15 @@ exports.updateUserRole = async (req, res) => {
         const user = await User.findById(req.params.id);
 
         if (!user) return res.status(404).json({ message: 'User not found.' });
+
+        // --- 🛡️ THE MASTER ADMIN LOCK 🛡️ ---
+        // Nobody, not even another admin, can change this specific account
+        if (user.email === 'Guruprasadjena989@gmail.com') {
+            return res.status(403).json({ 
+                message: "SECURITY ALERT: Master Admin credentials cannot be modified or demoted." 
+            });
+        }
+        // ------------------------------------
 
         user.role = role;
         await user.save();
