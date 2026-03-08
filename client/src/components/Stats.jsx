@@ -23,48 +23,67 @@ const Stats = () => {
     }, []);
 
     if (loading) {
-        return <div className="text-center text-teal-100 font-bold py-10 animate-pulse">Calculating telemetry...</div>;
+        return (
+            <div className="flex flex-col items-center justify-center py-20 animate-pulse w-full max-w-md mx-auto">
+                <i className="ph-duotone ph-arrows-clockwise text-4xl text-teal-500 animate-spin mb-4 shadow-[0_0_20px_rgba(20,184,166,0.5)] rounded-full"></i>
+                <p className="text-[10px] font-black uppercase tracking-widest text-teal-300">Calculating Telemetry...</p>
+            </div>
+        );
     }
 
     if (!statsData) {
-        return <div className="text-center text-red-400 font-bold py-10">Failed to load stats.</div>;
+        return (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold px-4 py-3 rounded-2xl text-center backdrop-blur-sm animate-enter mt-10 max-w-md mx-auto">
+                Failed to load telemetry data.
+            </div>
+        );
     }
 
     return (
-        <div className="space-y-4 animate-enter relative z-20 w-full max-w-md mx-auto mt-6">
+        <div className="space-y-6 animate-enter w-full max-w-md mx-auto relative z-20 pb-10">
             
             {/* Header Area */}
-            <div className="flex items-center justify-between mb-4 px-2">
-                <h3 className="font-extrabold text-white text-lg">Live Telemetry</h3>
+            <div className="flex items-center justify-between mb-2 px-2">
+                <h3 className="font-black text-white text-lg flex items-center gap-3 tracking-wide">
+                    <div className="w-8 h-8 bg-teal-500/20 border border-teal-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.2)]">
+                        <i className="ph-bold ph-chart-polar text-teal-400"></i>
+                    </div>
+                    Live Telemetry
+                </h3>
                 <button 
                     onClick={fetchStats} 
-                    className="bg-white/20 text-white hover:bg-white/30 text-xs font-bold px-3 py-1 rounded-full backdrop-blur-md flex items-center gap-1 transition-colors active:scale-95"
+                    className="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-teal-300 hover:bg-teal-500/20 hover:text-white active:scale-90 transition-all duration-300 flex items-center justify-center"
+                    title="Refresh Stats"
                 >
-                    <i className="ph-bold ph-arrows-clockwise"></i> Refresh
+                    <i className="ph-bold ph-arrows-clockwise text-lg"></i>
                 </button>
             </div>
 
             {/* Total Meals Hero Card */}
-            <div className="glass p-6 rounded-[2rem] flex flex-col items-center justify-center text-center mb-4 relative overflow-hidden shadow-lg">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 to-[#2A7B9B]"></div>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Total Served Today</span>
-                <span className="text-6xl font-black text-[#2A7B9B] drop-shadow-sm">{statsData.total}</span>
+            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-[2.5rem] flex flex-col items-center justify-center text-center shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] relative overflow-hidden group">
+                {/* Glowing Background Radial */}
+                <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-teal-500/10 group-hover:bg-teal-500/20 transition-colors pointer-events-none blur-3xl"></div>
+                
+                <span className="text-[11px] font-black text-teal-200/50 uppercase tracking-[0.3em] mb-2 relative z-10">Total Served Today</span>
+                <span className="text-7xl font-black text-white drop-shadow-[0_0_30px_rgba(20,184,166,0.5)] relative z-10 tracking-tighter">
+                    {statsData.total}
+                </span>
             </div>
 
             {/* 2x2 Grid for Individual Meals */}
             <div className="grid grid-cols-2 gap-4">
                 {[
-                    { label: 'Breakfast', count: statsData.stats.Breakfast, icon: 'ph-coffee', color: 'text-orange-500', bg: 'bg-orange-100' },
-                    { label: 'Lunch', count: statsData.stats.Lunch, icon: 'ph-hamburger', color: 'text-green-500', bg: 'bg-green-100' },
-                    { label: 'Snacks', count: statsData.stats.Snacks, icon: 'ph-cookie', color: 'text-yellow-500', bg: 'bg-yellow-100' },
-                    { label: 'Dinner', count: statsData.stats.Dinner, icon: 'ph-moon-stars', color: 'text-indigo-500', bg: 'bg-indigo-100' }
+                    { label: 'Breakfast', count: statsData.stats.Breakfast, icon: 'ph-coffee', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', shadow: 'shadow-[0_0_15px_rgba(251,191,36,0.2)]' },
+                    { label: 'Lunch', count: statsData.stats.Lunch, icon: 'ph-hamburger', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', shadow: 'shadow-[0_0_15px_rgba(52,211,153,0.2)]' },
+                    { label: 'Snacks', count: statsData.stats.Snacks, icon: 'ph-cookie', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30', shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.2)]' },
+                    { label: 'Dinner', count: statsData.stats.Dinner, icon: 'ph-moon-stars', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', shadow: 'shadow-[0_0_15px_rgba(96,165,250,0.2)]' }
                 ].map((meal) => (
-                    <div key={meal.label} className="glass p-5 rounded-[1.5rem] flex flex-col items-center text-center shadow-sm hover:scale-[1.02] transition-transform">
-                        <div className={`w-12 h-12 ${meal.bg} rounded-full flex items-center justify-center mb-3 shadow-inner`}>
+                    <div key={meal.label} className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] flex flex-col items-center text-center shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:bg-white/10 transition-all group">
+                        <div className={`w-12 h-12 ${meal.bg} border ${meal.border} rounded-2xl flex items-center justify-center mb-4 ${meal.shadow} group-hover:scale-110 transition-transform`}>
                             <i className={`ph-fill ${meal.icon} text-2xl ${meal.color}`}></i>
                         </div>
-                        <span className="text-3xl font-extrabold text-slate-800 leading-none">{meal.count}</span>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase mt-2 tracking-wider">{meal.label}</span>
+                        <span className="text-3xl font-black text-white leading-none tracking-tight">{meal.count}</span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase mt-2 tracking-[0.2em]">{meal.label}</span>
                     </div>
                 ))}
             </div>

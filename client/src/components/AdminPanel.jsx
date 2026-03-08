@@ -36,61 +36,68 @@ const AdminPanel = () => {
     };
 
     return (
-        <div className="space-y-4 animate-enter relative z-20 w-full max-w-md mx-auto mt-6">
-            <div className="glass-dark p-6 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden bg-slate-800/80 backdrop-blur-md border border-white/10">
-                <h3 className="font-bold text-lg mb-5 flex items-center gap-2">
-                    <i className="ph-fill ph-user-plus text-[#2480D1]"></i> 
-                    Register Participant
+        <div className="space-y-4 animate-enter relative z-20 w-full max-w-md mx-auto">
+            {/* Premium Frosted Glass Card */}
+            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-[2.5rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] relative overflow-hidden">
+                
+                <h3 className="font-black text-2xl text-white mb-6 flex items-center gap-3 tracking-wide">
+                    <div className="w-10 h-10 bg-teal-500/20 border border-teal-500/30 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(20,184,166,0.2)]">
+                        <i className="ph-bold ph-user-plus text-teal-400 text-xl"></i>
+                    </div>
+                    Register
                 </h3>
 
                 {message && (
-                    <div className={`mb-4 p-3 rounded-xl text-xs font-bold break-all ${message.type === 'error' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                    <div className={`mb-6 p-4 rounded-2xl text-[11px] font-bold break-all border backdrop-blur-sm animate-enter ${message.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-teal-500/10 border-teal-500/30 text-teal-300'}`}>
                         {message.text}
                     </div>
                 )}
 
-                <form onSubmit={handleAddParticipant} className="space-y-3">
-                    <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Unique ID (e.g. UTS26V01)</label>
+                <form onSubmit={handleAddParticipant} className="space-y-5">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest ml-3">Unique ID</label>
                         <input 
                             type="text" 
                             value={qrId}
                             onChange={(e) => setQrId(e.target.value)}
-                            className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 font-bold text-white focus:ring-2 focus:ring-[#2480D1] outline-none uppercase" 
-                            placeholder="UTS26..."
+                            className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-5 font-bold text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner uppercase" 
+                            placeholder="e.g. UTS26V01"
                             required
                         />
                     </div>
-                    <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Full Name</label>
+                    
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest ml-3">Full Name</label>
                         <input 
                             type="text" 
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 font-bold text-white focus:ring-2 focus:ring-[#2480D1] outline-none" 
+                            className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-5 font-bold text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner" 
                             placeholder="John Doe"
                             required
                         />
                     </div>
-                    <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Category</label>
+                    
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest ml-3">Category</label>
                         <select 
                             value={category}
                             onChange={(e) => setCategory(e.target.value)}
-                            className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 font-bold text-white focus:ring-2 focus:ring-[#2480D1] outline-none"
+                            className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-5 font-bold text-white focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner appearance-none"
                         >
-                            <option value="Volunteer">Volunteer</option>
-                            <option value="Participant">Participant</option>
-                            <option value="Guest">Guest</option>
+                            {/* Styling the options so they look good in the native dropdown menu */}
+                            <option value="Volunteer" className="bg-slate-800 text-white">Volunteer</option>
+                            <option value="Participant" className="bg-slate-800 text-white">Participant</option>
+                            <option value="Guest" className="bg-slate-800 text-white">Guest</option>
                         </select>
                     </div>
                     
                     <button 
                         type="submit" 
                         disabled={loading}
-                        className="w-full mt-4 py-3 bg-[#2480D1] hover:bg-[#1a66a8] text-white font-bold rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50"
+                        className={`w-full py-4 mt-2 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 font-black tracking-wide ${loading ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)] active:scale-95 translate-y-[-2px] active:translate-y-[0px]'}`}
                     >
-                        {loading ? 'Saving...' : 'Save & Generate Key'}
+                        {loading ? 'Registering...' : 'Save & Generate Key'}
                     </button>
                 </form>
             </div>

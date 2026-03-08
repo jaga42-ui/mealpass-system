@@ -25,7 +25,7 @@ const Scanner = () => {
     }, []);
 
     const startScanner = async () => {
-        if (config.isScannerLocked) return; // Prevent starting if locked
+        if (config.isScannerLocked) return; 
         
         setIsScanning(true);
         setScanResult(null);
@@ -60,7 +60,7 @@ const Scanner = () => {
         try {
             let payload = {};
 
-            // THE HYBRID ENGINE: Try to read as a secure dynamic token first
+            // THE HYBRID ENGINE
             try {
                 const parsedData = JSON.parse(decodedText);
                 payload = {
@@ -69,14 +69,12 @@ const Scanner = () => {
                     mealType: config.activeMeal
                 };
             } catch (e) {
-                // FALLBACK: If it's not JSON, it's a printed static card. Just grab the ID.
                 payload = {
                     qrId: decodedText.trim().toUpperCase(),
                     mealType: config.activeMeal
                 };
             }
             
-            // Send the smart payload to the backend
             const response = await api.post('/scans/verify', payload);
 
             setScanResult({
@@ -105,56 +103,69 @@ const Scanner = () => {
     };
 
     if (loadingConfig) {
-        return <div className="text-center text-teal-100 font-bold py-10 animate-pulse">Syncing with Command Center...</div>;
+        return (
+            <div className="flex flex-col items-center justify-center py-20 animate-pulse w-full max-w-md mx-auto">
+                <i className="ph-duotone ph-arrows-clockwise text-4xl text-teal-500 animate-spin mb-4 shadow-[0_0_20px_rgba(20,184,166,0.5)] rounded-full"></i>
+                <p className="text-[10px] font-black uppercase tracking-widest text-teal-300">Syncing with Command...</p>
+            </div>
+        );
     }
 
     // THE LOCKDOWN SCREEN
     if (config.isScannerLocked) {
         return (
-            <div className="flex flex-col items-center justify-center h-80 glass p-6 rounded-[2.5rem] border-2 border-red-500/30 text-center animate-enter delay-200 shadow-xl">
-                <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-4">
-                    <i className="ph-fill ph-lock-key text-4xl text-red-500"></i>
+            <div className="flex flex-col items-center justify-center h-80 bg-slate-900/80 backdrop-blur-2xl p-8 rounded-[2.5rem] border border-red-500/30 text-center animate-enter shadow-[0_20px_50px_-10px_rgba(239,68,68,0.2)] w-full max-w-md mx-auto relative overflow-hidden">
+                <div className="absolute inset-0 bg-red-500/5 animate-pulse"></div>
+                <div className="w-20 h-20 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(239,68,68,0.4)] relative z-10">
+                    <i className="ph-fill ph-lock-key text-5xl text-red-500 animate-pulse"></i>
                 </div>
-                <h3 className="text-2xl font-black text-slate-800">System Locked</h3>
-                <p className="text-sm font-bold text-slate-500 mt-2">
-                    The Admin has temporarily paused all scanning operations. Please wait.
+                <h3 className="text-3xl font-black text-white tracking-wide relative z-10">System Locked</h3>
+                <p className="text-[11px] font-bold text-red-200/70 mt-3 uppercase tracking-widest leading-relaxed relative z-10">
+                    The Admin has paused all scanning operations. Please wait for clearance.
                 </p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-4 animate-enter delay-200">
+        <div className="space-y-5 animate-enter w-full max-w-md mx-auto relative z-20">
+            
             {/* Read-Only Meal Status Header */}
-            <div className="glass p-4 rounded-[2rem] flex items-center justify-between shadow-sm border border-[#2A7B9B]/20">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#2A7B9B]/10 rounded-full flex items-center justify-center">
-                        <i className="ph-fill ph-check-circle text-xl text-[#2A7B9B]"></i>
+            <div className="bg-white/5 backdrop-blur-2xl p-5 rounded-[2rem] flex items-center justify-between shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-white/10">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-teal-500/20 border border-teal-500/30 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.2)]">
+                        <i className="ph-bold ph-crosshair text-2xl text-teal-400"></i>
                     </div>
                     <div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Scanning For</div>
-                        <div className="text-lg font-black text-[#2A7B9B]">{config.activeMeal}</div>
+                        <div className="text-[9px] font-black text-teal-200/50 uppercase tracking-[0.2em] leading-none mb-1">Targeting</div>
+                        <div className="text-xl font-black text-white tracking-wide">{config.activeMeal}</div>
                     </div>
                 </div>
-                <div className="flex items-center gap-1 bg-green-100 text-green-600 px-3 py-1.5 rounded-full">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Live</span>
+                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded-xl shadow-inner">
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]"></div>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">Live</span>
                 </div>
             </div>
 
             {/* Camera Container */}
-            <div className="relative w-full aspect-square bg-black rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white/40 group">
-                <div id="reader" className="w-full h-full opacity-80"></div>
+            <div className="relative w-full aspect-square bg-slate-950 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 group">
+                {/* The glowing target brackets */}
+                <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-teal-500/70 rounded-tl-xl pointer-events-none z-10"></div>
+                <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-teal-500/70 rounded-tr-xl pointer-events-none z-10"></div>
+                <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-teal-500/70 rounded-bl-xl pointer-events-none z-10"></div>
+                <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-teal-500/70 rounded-br-xl pointer-events-none z-10"></div>
+
+                <div id="reader" className="w-full h-full opacity-90 object-cover"></div>
                 
                 {!isScanning && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-md z-10">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm z-20">
                         <button 
                             onClick={startScanner} 
-                            className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(255,255,255,0.4)] hover:scale-105 transition-transform active:scale-95"
+                            className="w-24 h-24 bg-teal-500 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(20,184,166,0.6)] hover:scale-105 transition-transform active:scale-95 group-hover:bg-teal-400"
                         >
-                            <i className="ph-fill ph-camera text-3xl text-[#2480D1]"></i>
+                            <i className="ph-fill ph-camera text-4xl text-white"></i>
                         </button>
-                        <p className="mt-5 text-xs font-bold text-white uppercase tracking-widest">Tap to Scan</p>
+                        <p className="mt-6 text-[11px] font-black text-teal-200 uppercase tracking-[0.3em] drop-shadow-lg">Tap to Scan</p>
                     </div>
                 )}
             </div>
@@ -162,40 +173,48 @@ const Scanner = () => {
             {isScanning && (
                 <button 
                     onClick={stopScanner} 
-                    className="w-full h-16 glass text-red-500 font-bold rounded-[1.5rem] shadow-sm hover:bg-white transition-colors flex items-center justify-center gap-2 active:scale-95"
+                    className="w-full h-16 bg-white/5 backdrop-blur-xl border border-rose-500/30 text-rose-400 font-black tracking-widest uppercase rounded-2xl shadow-lg hover:bg-rose-500/10 hover:border-rose-500/50 transition-all flex items-center justify-center gap-3 active:scale-95 text-[11px]"
                 >
                     <i className="ph-bold ph-stop-circle text-xl"></i>
-                    <span>Stop Camera</span>
+                    <span className="mt-0.5">Stop Camera</span>
                 </button>
             )}
 
-            {/* Result Modal Overlay */}
+            {/* Neon Dark Mode Result Modal Overlay */}
             {scanResult && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-6">
-                    <div className={`bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl border-4 ${scanResult.type === 'success' ? 'border-green-500' : 'border-red-500'} animate-enter`}>
-                        <div className={`p-6 border-b flex items-center gap-4 pt-8 ${scanResult.type === 'success' ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-md ${scanResult.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-                                <i className={`ph-fill ${scanResult.type === 'success' ? 'ph-check-circle' : 'ph-warning-circle'} text-2xl text-white`}></i>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-6">
+                    <div className={`bg-slate-900 w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.9)] border ${scanResult.type === 'success' ? 'border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.2)]' : 'border-rose-500/50 shadow-[0_0_50px_rgba(244,63,94,0.2)]'} animate-enter relative`}>
+                        
+                        {/* Glowing Background Gradient */}
+                        <div className={`absolute top-0 w-full h-32 opacity-20 ${scanResult.type === 'success' ? 'bg-gradient-to-b from-emerald-500 to-transparent' : 'bg-gradient-to-b from-rose-500 to-transparent'}`}></div>
+
+                        <div className={`relative p-6 border-b flex flex-col items-center gap-4 pt-10 ${scanResult.type === 'success' ? 'border-emerald-500/20' : 'border-rose-500/20'}`}>
+                            <div className={`w-20 h-20 rounded-full flex items-center justify-center shrink-0 border-4 ${scanResult.type === 'success' ? 'bg-emerald-500/20 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.5)]' : 'bg-rose-500/20 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.5)]'}`}>
+                                <i className={`ph-fill ${scanResult.type === 'success' ? 'ph-check text-4xl text-emerald-400' : 'ph-x text-4xl text-rose-400'}`}></i>
                             </div>
-                            <div>
-                                <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Status</div>
-                                <div className={`text-xl font-extrabold leading-none ${scanResult.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                            <div className="text-center mt-2">
+                                <div className={`text-2xl font-black tracking-wide leading-none ${scanResult.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
                                     {scanResult.title}
                                 </div>
-                                <div className={`text-xs font-bold mt-1 ${scanResult.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                                <div className="text-[11px] font-bold mt-3 text-slate-300 uppercase tracking-widest px-4">
                                     {scanResult.message}
                                 </div>
                             </div>
                         </div>
-                        <div className="p-6">
-                            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1">Participant</div>
-                            <div className="text-2xl font-bold text-slate-800 leading-tight mb-3">
-                                {scanResult.participant?.name || 'Unknown'}
+                        
+                        <div className="p-8 bg-slate-900/50 relative">
+                            <div className="text-center">
+                                <div className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] mb-2">Participant ID</div>
+                                <div className="text-2xl font-black text-white leading-tight mb-8">
+                                    {scanResult.participant?.name || 'Unknown Entity'}
+                                </div>
                             </div>
+                            
                             <button 
                                 onClick={closeResult} 
-                                className="w-full mt-6 py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                className={`w-full py-4 text-white font-black tracking-widest uppercase text-[11px] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${scanResult.type === 'success' ? 'bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-rose-500 hover:bg-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]'}`}
                             >
+                                <i className="ph-bold ph-scan text-lg"></i>
                                 <span>Next Scan</span>
                             </button>
                         </div>

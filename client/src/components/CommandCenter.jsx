@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import QRCode from 'qrcode'; // <-- New QR Engine
+import QRCode from 'qrcode'; 
 import api from '../api/axios';
 
 const CommandCenter = () => {
@@ -84,12 +84,12 @@ const CommandCenter = () => {
             const doc = new jsPDF();
             
             doc.setFontSize(22);
-            doc.setTextColor(42, 123, 155);
-            doc.text("MealPass - End of Day Report", 14, 20);
+            doc.setTextColor(20, 184, 166); // Updated to match Teal-500
+            doc.text("AccessPro - End of Day Report", 14, 20);
             
             autoTable(doc, {
                 startY: 40,
-                headStyles: { fillColor: [42, 123, 155] },
+                headStyles: { fillColor: [20, 184, 166] }, // Updated to match Teal-500
                 head: [['Meal Category', 'Total Served']],
                 body: [
                     ['Breakfast', stats.Breakfast],
@@ -101,7 +101,7 @@ const CommandCenter = () => {
                 footStyles: { fillColor: [240, 240, 240], textColor: [0,0,0], fontStyle: 'bold' }
             });
 
-            doc.save(`MealPass_Report_${res.data.date}.pdf`);
+            doc.save(`AccessPro_Report_${res.data.date}.pdf`);
             showMessage('Stats Report downloaded.', 'success');
         } catch (err) { showMessage('Failed to generate stats.', 'error'); } 
         finally { setLoading(false); }
@@ -113,7 +113,6 @@ const CommandCenter = () => {
             setLoading(true);
             showMessage('Fetching roster and generating codes...', 'success');
             
-            // 1. Fetch the entire Roster from the backend
             const res = await api.get('/participants');
             const participants = res.data;
 
@@ -123,10 +122,7 @@ const CommandCenter = () => {
                 return;
             }
 
-            // 2. Setup an A4 Document
             const doc = new jsPDF('portrait', 'mm', 'a4');
-            
-            // A4 Grid Math: 3 columns x 4 rows = 12 badges per page
             const cols = 3;
             const rows = 4;
             const marginX = 15;
@@ -140,32 +136,25 @@ const CommandCenter = () => {
             for (let i = 0; i < participants.length; i++) {
                 const p = participants[i];
 
-                // If we filled the page (12 items), add a new page
                 if (currentItem > 0 && currentItem % (cols * rows) === 0) {
                     doc.addPage();
-                    currentItem = 0; // Reset for the new page
+                    currentItem = 0; 
                 }
 
-                // Calculate the exact X and Y coordinates for this badge
                 const colIndex = currentItem % cols;
                 const rowIndex = Math.floor(currentItem / cols);
                 
-                const x = marginX + (colIndex * (badgeWidth + 10)); // 10mm gap between columns
-                const y = marginY + (rowIndex * (badgeHeight + 5)); // 5mm gap between rows
+                const x = marginX + (colIndex * (badgeWidth + 10)); 
+                const y = marginY + (rowIndex * (badgeHeight + 5)); 
 
-                // Draw Badge Border
                 doc.setDrawColor(200);
                 doc.roundedRect(x, y, badgeWidth, badgeHeight, 3, 3);
 
-                // Generate the QR Code image data
-                // We use the raw qrId here so printed cards trigger the hybrid fallback!
                 const qrDataUrl = await QRCode.toDataURL(p.qrId, { margin: 1, width: 400 });
 
-                // Inject QR Code Image
                 const qrXOffset = x + (badgeWidth - qrSize) / 2;
                 doc.addImage(qrDataUrl, 'PNG', qrXOffset, y + 5, qrSize, qrSize);
 
-                // Inject Participant Name (Truncated if too long)
                 doc.setFontSize(10);
                 doc.setTextColor(30);
                 doc.setFont("helvetica", "bold");
@@ -173,7 +162,6 @@ const CommandCenter = () => {
                 const textWidth = doc.getTextWidth(shortName);
                 doc.text(shortName, x + (badgeWidth - textWidth) / 2, y + 52);
 
-                // Inject ID and Category
                 doc.setFontSize(8);
                 doc.setTextColor(100);
                 doc.setFont("helvetica", "normal");
@@ -184,7 +172,7 @@ const CommandCenter = () => {
                 currentItem++;
             }
 
-            doc.save('MealPass_Printable_Badges.pdf');
+            doc.save('AccessPro_Printable_Badges.pdf');
             showMessage('Badge PDF downloaded successfully.', 'success');
             
         } catch (err) {
@@ -201,105 +189,117 @@ const CommandCenter = () => {
     };
 
     return (
-        <div className="space-y-6 animate-enter relative z-20 w-full max-w-md mx-auto mt-6 pb-6">
+        <div className="space-y-6 animate-enter w-full max-w-md mx-auto">
             
             {message && (
-                <div className={`p-3 rounded-xl text-xs font-bold text-center shadow-md ${message.type === 'error' ? 'bg-red-50 border border-red-200 text-red-600' : 'bg-green-50 border border-green-200 text-green-600'}`}>
+                <div className={`p-4 rounded-2xl text-[11px] font-bold text-center backdrop-blur-sm shadow-lg animate-enter border ${message.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-teal-500/10 border-teal-500/30 text-teal-300'}`}>
                     {message.text}
                 </div>
             )}
 
             {/* SECTION 1: GLOBAL OVERRIDES */}
-            <div className="glass-dark p-6 rounded-[2rem] border border-white/10 shadow-lg">
-                <h3 className="font-extrabold text-white mb-4 flex items-center gap-2">
-                    <i className="ph-fill ph-sliders text-[#2A7B9B]"></i> System Overrides
+            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] relative overflow-hidden">
+                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3 tracking-wide">
+                    <div className="w-8 h-8 bg-teal-500/20 border border-teal-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.2)]">
+                        <i className="ph-bold ph-sliders text-teal-400"></i>
+                    </div>
+                    System Overrides
                 </h3>
                 
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between bg-slate-900/50 p-3 rounded-xl">
-                        <span className="text-xs font-bold text-slate-300 uppercase">Lock All Scanners</span>
+                    <div className="flex items-center justify-between bg-slate-900/50 border border-white/5 p-4 rounded-2xl shadow-inner">
+                        <span className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest">Lock Scanners</span>
                         <button 
                             onClick={() => handleUpdateSettings('isScannerLocked', !settings.isScannerLocked)}
-                            className={`w-12 h-6 rounded-full relative transition-colors ${settings.isScannerLocked ? 'bg-red-500' : 'bg-slate-600'}`}
+                            className={`w-12 h-6 rounded-full relative transition-all duration-300 shadow-inner ${settings.isScannerLocked ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-slate-700'}`}
                         >
-                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.isScannerLocked ? 'left-7' : 'left-1'}`}></div>
+                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-300 ${settings.isScannerLocked ? 'left-7' : 'left-1'}`}></div>
                         </button>
                     </div>
 
-                    <div className="flex flex-col bg-slate-900/50 p-3 rounded-xl">
-                        <span className="text-xs font-bold text-slate-300 uppercase mb-2">Force Active Meal</span>
+                    <div className="flex flex-col bg-slate-900/50 border border-white/5 p-4 rounded-2xl shadow-inner">
+                        <span className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest mb-3">Force Active Meal</span>
                         <select 
                             value={settings.activeMeal}
                             onChange={(e) => handleUpdateSettings('activeMeal', e.target.value)}
-                            className="bg-slate-800 text-white font-bold py-2 px-3 rounded-lg outline-none focus:ring-2 focus:ring-[#2A7B9B]"
+                            className="bg-slate-800 text-white font-bold py-3 px-4 rounded-xl border border-white/10 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner appearance-none"
                         >
-                            <option value="Breakfast">Breakfast</option>
-                            <option value="Lunch">Lunch</option>
-                            <option value="Snacks">Snacks</option>
-                            <option value="Dinner">Dinner</option>
+                            <option value="Breakfast" className="bg-slate-800">Breakfast</option>
+                            <option value="Lunch" className="bg-slate-800">Lunch</option>
+                            <option value="Snacks" className="bg-slate-800">Snacks</option>
+                            <option value="Dinner" className="bg-slate-800">Dinner</option>
                         </select>
                     </div>
                 </div>
             </div>
 
             {/* SECTION 2: DATA OPERATIONS */}
-            <div className="glass p-6 rounded-[2rem] shadow-sm">
-                <h3 className="font-extrabold text-slate-800 mb-4 flex items-center gap-2">
-                    <i className="ph-fill ph-database text-[#2480D1]"></i> Data Center
+            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
+                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3 tracking-wide">
+                    <div className="w-8 h-8 bg-teal-500/20 border border-teal-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.2)]">
+                        <i className="ph-bold ph-database text-teal-400"></i>
+                    </div>
+                    Data Center
                 </h3>
                 
                 <div className="grid grid-cols-3 gap-3">
-                    <label className="relative flex flex-col items-center justify-center py-4 bg-white/50 hover:bg-white rounded-xl cursor-pointer transition-colors shadow-sm text-center border-2 border-dashed border-[#2480D1]/30 active:scale-95">
-                        <i className="ph-duotone ph-file-xls text-3xl text-green-600 mb-1"></i>
-                        <span className="text-[9px] font-bold text-slate-600 uppercase">Upload</span>
+                    <label className="relative flex flex-col items-center justify-center py-5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-2xl cursor-pointer transition-all duration-300 text-center border border-emerald-500/30 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] active:scale-95 group">
+                        <i className="ph-duotone ph-file-xls text-3xl text-emerald-400 mb-2 group-hover:scale-110 transition-transform"></i>
+                        <span className="text-[9px] font-black text-emerald-300/80 uppercase tracking-widest">Upload</span>
                         <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} disabled={loading} />
                     </label>
 
                     <button 
                         onClick={generateStatsPDF}
                         disabled={loading}
-                        className="flex flex-col items-center justify-center py-4 bg-white/50 hover:bg-white rounded-xl transition-colors shadow-sm text-center border-2 border-dashed border-red-500/30 active:scale-95"
+                        className="flex flex-col items-center justify-center py-5 bg-rose-500/10 hover:bg-rose-500/20 rounded-2xl transition-all duration-300 text-center border border-rose-500/30 hover:shadow-[0_0_20px_rgba(244,63,94,0.2)] active:scale-95 disabled:opacity-50 group"
                     >
-                        <i className="ph-duotone ph-chart-bar text-3xl text-red-500 mb-1"></i>
-                        <span className="text-[9px] font-bold text-slate-600 uppercase">EOD Report</span>
+                        <i className="ph-duotone ph-file-pdf text-3xl text-rose-400 mb-2 group-hover:scale-110 transition-transform"></i>
+                        <span className="text-[9px] font-black text-rose-300/80 uppercase tracking-widest">Report</span>
                     </button>
 
-                    {/* NEW: Batch Print Button */}
                     <button 
                         onClick={generateQRPDF}
                         disabled={loading}
-                        className="flex flex-col items-center justify-center py-4 bg-[#2A7B9B]/10 hover:bg-[#2A7B9B]/20 rounded-xl transition-colors shadow-sm text-center border-2 border-[#2A7B9B]/30 active:scale-95"
+                        className="flex flex-col items-center justify-center py-5 bg-teal-500/10 hover:bg-teal-500/20 rounded-2xl transition-all duration-300 text-center border border-teal-500/30 hover:shadow-[0_0_20px_rgba(20,184,166,0.2)] active:scale-95 disabled:opacity-50 group"
                     >
-                        <i className="ph-duotone ph-printer text-3xl text-[#2A7B9B] mb-1"></i>
-                        <span className="text-[9px] font-bold text-[#2A7B9B] uppercase">Print IDs</span>
+                        <i className="ph-duotone ph-printer text-3xl text-teal-400 mb-2 group-hover:scale-110 transition-transform"></i>
+                        <span className="text-[9px] font-black text-teal-300/80 uppercase tracking-widest">Print IDs</span>
                     </button>
                 </div>
             </div>
 
             {/* SECTION 3: STAFF MANAGEMENT */}
-            <div className="glass-dark p-6 rounded-[2rem] border border-white/10 shadow-lg">
-                <h3 className="font-extrabold text-white mb-4 flex items-center gap-2">
-                    <i className="ph-fill ph-shield-check text-purple-400"></i> Staff Access
+            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
+                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3 tracking-wide">
+                    <div className="w-8 h-8 bg-purple-500/20 border border-purple-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+                        <i className="ph-bold ph-shield-check text-purple-400"></i>
+                    </div>
+                    Staff Access
                 </h3>
                 
                 <div className="space-y-3 max-h-60 overflow-y-auto no-scrollbar pr-1">
                     {users.map(u => (
-                        <div key={u._id} className="bg-slate-900/50 p-3 rounded-xl flex items-center justify-between">
-                            <div className="overflow-hidden">
-                                <p className="text-sm font-bold text-white truncate">{u.email}</p>
+                        <div key={u._id} className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between shadow-inner">
+                            <div className="overflow-hidden mr-2">
+                                <p className="text-xs font-bold text-slate-300 truncate">{u.email}</p>
                             </div>
                             <select 
                                 value={u.role}
                                 onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                                className={`text-[10px] font-bold uppercase rounded-lg px-2 py-1 outline-none ${u.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : u.role === 'volunteer' ? 'bg-blue-500/20 text-blue-300' : 'bg-yellow-500/20 text-yellow-300'}`}
+                                className={`text-[9px] font-black uppercase tracking-widest rounded-xl px-3 py-2 outline-none appearance-none text-center cursor-pointer ${
+                                    u.role === 'admin' ? 'bg-purple-500/20 border border-purple-500/30 text-purple-300' : 
+                                    u.role === 'volunteer' ? 'bg-teal-500/20 border border-teal-500/30 text-teal-300' : 
+                                    'bg-amber-500/20 border border-amber-500/30 text-amber-300'
+                                }`}
                             >
-                                <option value="pending" className="bg-slate-800 text-white">Pending</option>
-                                <option value="volunteer" className="bg-slate-800 text-white">Volunteer</option>
-                                <option value="admin" className="bg-slate-800 text-white">Admin</option>
+                                <option value="pending" className="bg-slate-800 text-amber-400">Pending</option>
+                                <option value="volunteer" className="bg-slate-800 text-teal-400">Volunteer</option>
+                                <option value="admin" className="bg-slate-800 text-purple-400">Admin</option>
                             </select>
                         </div>
                     ))}
-                    {users.length === 0 && <p className="text-xs text-slate-500 text-center">No staff found.</p>}
+                    {users.length === 0 && <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 text-center py-4">No staff found.</p>}
                 </div>
             </div>
 
