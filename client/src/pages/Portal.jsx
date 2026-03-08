@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { totp } from 'totp-generator';
+import * as OTPAuth from 'otpauth'; // <-- Browser-safe library
 
 const Portal = () => {
     const navigate = useNavigate();
@@ -13,26 +13,35 @@ const Portal = () => {
     useEffect(() => {
         const storedData = localStorage.getItem('mealpass_portal');
         if (!storedData) {
-            // If they haven't logged in, kick them back to the login screen
             navigate('/pass');
             return;
         }
         setPortalData(JSON.parse(storedData));
     }, [navigate]);
 
-    // 2. The TOTP Generator Logic
+    // 2. The TOTP Generator Logic (Browser Safe)
     useEffect(() => {
         if (!portalData?.secret) return;
 
+        // Initialize the secure generator
+        const totp = new OTPAuth.TOTP({
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30,
+            secret: OTPAuth.Secret.fromBase32(portalData.secret)
+        });
+
         const updateToken = () => {
             try {
-                const { otp, expires } = totp(portalData.secret);
-                setToken(otp);
+                // Generate the current 6-digit code
+                setToken(totp.generate());
                 
-                const remaining = Math.max(0, Math.floor((expires - Date.now()) / 1000));
+                // Calculate seconds remaining in the 30-second window
+                const epoch = Math.floor(Date.now() / 1000);
+                const remaining = 30 - (epoch % 30);
                 setTimeLeft(remaining);
             } catch (err) {
-                console.error("Token generation error");
+                console.error("Token generation error", err);
             }
         };
 
@@ -48,7 +57,6 @@ const Portal = () => {
 
     if (!portalData) return null;
 
-    // This is the highly secure JSON payload that the Scanner is expecting
     const qrPayload = JSON.stringify({ qrId: portalData.qrId, totp: token });
 
     return (
