@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import QRCode from 'react-qr-code';
-import api from '../api/axios'; // Adjust path if your axios config is elsewhere
+import { QRCodeSVG } from 'qrcode.react'; // <-- Updated import
+import api from '../api/axios';
 
 const BadgeGenerator = () => {
     const [count, setCount] = useState(100);
@@ -12,7 +12,6 @@ const BadgeGenerator = () => {
         
         setLoading(true);
         try {
-            // Passing the dynamic count directly to our backend engine
             const response = await api.get(`/admin/generate-badges?count=${count}`);
             setBadges(response.data.badges);
         } catch (error) {
@@ -68,23 +67,22 @@ const BadgeGenerator = () => {
             </div>
 
             {/* --- THE PRINTABLE GRID --- */}
-            {/* This grid styling ensures it looks perfect on standard A4 paper */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 print:grid-cols-4 print:gap-4 print:bg-white print:text-black print:p-8">
                 {badges.map((badgeString, index) => (
                     <div 
                         key={index} 
-                        // break-inside-avoid stops a QR code from being cut in half across two printed pages
                         className="flex flex-col items-center justify-center p-4 bg-white/5 border border-white/10 rounded-2xl print:bg-white print:border-gray-300 print:rounded-lg print:break-inside-avoid"
                     >
                         <div className="bg-white p-2 rounded-xl mb-3 print:p-0 print:mb-2">
-                            <QRCode 
+                            {/* <-- Updated Component Tag --> */}
+                            <QRCodeSVG 
                                 value={badgeString} 
                                 size={120}
-                                level="H" // High error correction so it scans even if slightly damaged
+                                level="H" 
                             />
                         </div>
                         <p className="text-white font-mono text-xs tracking-widest print:text-black print:font-bold">
-                            {badgeString.split('-')[0]} {/* Only show the ID part, hide the secret signature */}
+                            {badgeString.split('-')[0]} 
                         </p>
                         <p className="text-teal-400/50 text-[8px] uppercase font-black mt-1 print:text-gray-400">
                             AccessPro Secure
