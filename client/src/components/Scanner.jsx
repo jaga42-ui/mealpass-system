@@ -34,7 +34,6 @@ const Scanner = () => {
             scannerRef.current = new Html5Qrcode("reader");
             await scannerRef.current.start(
                 { facingMode: "environment" },
-                // 🛡️ REMOVED 'qrbox' so the camera scans edge-to-edge flawlessly
                 { fps: 15 }, 
                 onScanSuccess,
                 onScanFailure
@@ -158,31 +157,37 @@ const Scanner = () => {
                 {/* The Video Output */}
                 <div id="reader" className="w-full h-full object-cover"></div>
                 
-                {/* Custom Overlay for Scanner Initialization */}
+                {/* 🚀 REDESIGNED: Symmetrical, High-Tech Activation Button 🚀 */}
                 {!isScanning && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-900/90 to-slate-950/95 z-20">
-                        <div className="w-32 h-32 mb-8 relative flex items-center justify-center">
-                            <div className="absolute inset-0 border-2 border-dashed border-teal-500/30 rounded-full animate-[spin_10s_linear_infinite]"></div>
-                            <button 
-                                onClick={startScanner} 
-                                className="w-24 h-24 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(20,184,166,0.4)] hover:scale-105 active:scale-95 transition-all duration-300"
-                            >
-                                <i className="ph-fill ph-camera text-4xl text-white"></i>
-                            </button>
-                        </div>
-                        <h4 className="text-white font-black text-xl tracking-wide mb-2">Lens Offline</h4>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center px-10">
-                            Tap the lens to initialize the optical matrix and begin scanning.
-                        </p>
+                    <div className="absolute inset-0 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm z-[60]">
+                        <button 
+                            onClick={startScanner} 
+                            className="group relative flex flex-col items-center cursor-pointer outline-none"
+                        >
+                            {/* Glowing Background Pulse */}
+                            <div className="absolute inset-0 bg-teal-500/20 blur-2xl rounded-full group-hover:bg-teal-500/40 transition-all duration-500"></div>
+                            
+                            {/* The Main Button */}
+                            <div className="w-28 h-28 bg-gradient-to-b from-slate-800 to-slate-900 border border-teal-500/30 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(20,184,166,0.3)] group-hover:border-teal-400 group-hover:scale-105 active:scale-95 transition-all duration-300 relative z-10">
+                                <i className="ph-bold ph-power text-5xl text-teal-500 group-hover:text-white transition-colors"></i>
+                            </div>
+
+                            {/* Minimal Tagline */}
+                            <div className="mt-8 relative z-10 text-center">
+                                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-400 bg-teal-500/10 border border-teal-500/20 px-5 py-2.5 rounded-full shadow-inner block">
+                                    Initialize System
+                                </span>
+                            </div>
+                        </button>
                     </div>
                 )}
 
-                {/* Floating Stop Button (Only visible while scanning) */}
+                {/* Floating Stop Button (High Z-Index) */}
                 {isScanning && (
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[60]">
                         <button 
                             onClick={stopScanner} 
-                            className="bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-rose-500 hover:border-rose-400 transition-all duration-300 active:scale-95 shadow-[0_10px_30px_rgba(0,0,0,0.5)] group/btn"
+                            className="bg-slate-900/90 backdrop-blur-xl border border-white/10 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-rose-500 hover:border-rose-400 transition-all duration-300 active:scale-95 shadow-[0_10px_30px_rgba(0,0,0,0.5)] group/btn"
                         >
                             <div className="w-2 h-2 bg-rose-500 rounded-full group-hover/btn:bg-white animate-pulse"></div>
                             Disengage
@@ -194,17 +199,12 @@ const Scanner = () => {
             {/* ✨ APPLE-PAY STYLE RESULT MODAL ✨ */}
             {scanResult && (
                 <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-slate-950/80 backdrop-blur-md pb-6 px-4 animate-enter">
-                    {/* Background click listener to close modal */}
                     <div className="w-full h-full absolute inset-0 cursor-pointer" onClick={closeResult}></div>
                     
                     <div className={`relative w-full max-w-md mx-auto rounded-[3rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,1)] border ${scanResult.type === 'success' ? 'bg-slate-900 border-emerald-500/30' : 'bg-slate-900 border-rose-500/30'} transform transition-all`}>
-                        
-                        {/* Dramatic Glow Effect */}
                         <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 blur-[80px] rounded-full pointer-events-none ${scanResult.type === 'success' ? 'bg-emerald-500/40' : 'bg-rose-500/40'}`}></div>
 
                         <div className="relative pt-12 pb-8 px-6 flex flex-col items-center">
-                            
-                            {/* Animated Icon Ring */}
                             <div className="relative mb-6">
                                 <div className={`absolute inset-0 rounded-full animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite] opacity-20 ${scanResult.type === 'success' ? 'bg-emerald-400' : 'bg-rose-400'}`}></div>
                                 <div className={`w-28 h-28 rounded-full flex items-center justify-center border-4 relative z-10 ${scanResult.type === 'success' ? 'bg-emerald-500/10 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.3)]' : 'bg-rose-500/10 border-rose-400 shadow-[0_0_40px_rgba(244,63,94,0.3)]'}`}>
@@ -212,7 +212,6 @@ const Scanner = () => {
                                 </div>
                             </div>
 
-                            {/* Massive Typography */}
                             <h2 className={`text-3xl font-black tracking-tight mb-2 text-center ${scanResult.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
                                 {scanResult.title}
                             </h2>
@@ -220,7 +219,6 @@ const Scanner = () => {
                                 {scanResult.message}
                             </p>
 
-                            {/* Participant Identity Box */}
                             <div className="w-full bg-slate-950/50 border border-white/5 rounded-[2rem] p-6 text-center shadow-inner mb-6">
                                 <div className="text-[9px] font-black uppercase text-slate-500 tracking-[0.25em] mb-2">Identity Confirmed</div>
                                 <div className="text-3xl font-black text-white leading-none truncate px-2">
@@ -233,7 +231,6 @@ const Scanner = () => {
                                 )}
                             </div>
                             
-                            {/* Call to Action */}
                             <button 
                                 onClick={closeResult} 
                                 className={`w-full py-5 text-white font-black tracking-[0.2em] uppercase text-xs rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 ${scanResult.type === 'success' ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-[0_10px_30px_rgba(16,185,129,0.3)]' : 'bg-gradient-to-r from-rose-500 to-rose-400 shadow-[0_10px_30px_rgba(244,63,94,0.3)]'}`}
