@@ -1,17 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import * as OTPAuth from 'otpauth';
 
 const Portal = () => {
     const navigate = useNavigate();
     const [portalData, setPortalData] = useState(null);
-    const [token, setToken] = useState('');
-    const [timeLeft, setTimeLeft] = useState(30);
 
     // 1. Load data from LocalStorage on mount
     useEffect(() => {
-        const storedData = localStorage.getItem('mealpass_portal');
+        const storedData = localStorage.getItem('accesspro_portal'); // Updated to new key
         if (!storedData) {
             navigate('/pass');
             return;
@@ -19,41 +16,15 @@ const Portal = () => {
         setPortalData(JSON.parse(storedData));
     }, [navigate]);
 
-    // 2. The TOTP Generator Logic
-    useEffect(() => {
-        if (!portalData?.secret) return;
-
-        const totp = new OTPAuth.TOTP({
-            algorithm: 'SHA1',
-            digits: 6,
-            period: 30,
-            secret: OTPAuth.Secret.fromBase32(portalData.secret)
-        });
-
-        const updateToken = () => {
-            try {
-                setToken(totp.generate());
-                const epoch = Math.floor(Date.now() / 1000);
-                const remaining = 30 - (epoch % 30);
-                setTimeLeft(remaining);
-            } catch (err) {
-                console.error("Token generation error", err);
-            }
-        };
-
-        updateToken();
-        const interval = setInterval(updateToken, 1000);
-        return () => clearInterval(interval);
-    }, [portalData]);
-
     const handleLogout = () => {
-        localStorage.removeItem('mealpass_portal');
+        localStorage.removeItem('accesspro_portal');
         navigate('/pass');
     };
 
     if (!portalData) return null;
 
-    const qrPayload = JSON.stringify({ qrId: portalData.qrId, totp: token });
+    // We no longer need TOTP! The qrId itself contains the secure HMAC signature (e.g., ABCD-12345678)
+    const qrPayload = portalData.qrId;
 
     return (
         // Full-screen deep teal gradient
@@ -79,38 +50,37 @@ const Portal = () => {
                 
                 <div className="flex gap-2 mb-8">
                     <span className="text-[10px] font-black bg-teal-500/20 border border-teal-500/30 text-teal-300 px-3 py-1 rounded-full uppercase tracking-widest shadow-inner">
-                        {portalData.qrId}
+                        {/* We only show the first half of the string so the secret signature stays hidden visually */}
+                        {portalData.qrId ? portalData.qrId.split('-')[0] : 'PENDING'}
                     </span>
                     <span className="text-[10px] font-black bg-white/5 border border-white/10 text-slate-300 px-3 py-1 rounded-full uppercase tracking-widest shadow-inner">
                         {portalData.category}
                     </span>
                 </div>
                 
-                {/* QR Code Wrapper (Must stay white for camera contrast) */}
+                {/* QR Code Wrapper */}
                 <div className="bg-white p-5 rounded-[2rem] shadow-[0_0_30px_rgba(20,184,166,0.3)] mb-8 border-[6px] border-slate-900/40 relative overflow-hidden transition-all">
                     
-                    {/* The dynamically changing QR Code */}
-                    <QRCodeSVG 
-                        value={qrPayload} 
-                        size={200} 
-                        bgColor={"#ffffff"} 
-                        fgColor={"#0f172a"} // Dark slate color for the code itself
-                        level={"H"} 
-                    />
-                    
-                    {/* Visual warning when the code is about to die */}
-                    {timeLeft <= 5 && (
-                        <div className="absolute inset-0 bg-red-500/95 backdrop-blur-sm flex items-center justify-center animate-pulse">
-                            <span className="text-white font-black text-xl uppercase tracking-widest drop-shadow-md">Refreshing</span>
+                    {qrPayload ? (
+                        <QRCodeSVG 
+                            value={qrPayload} 
+                            size={200} 
+                            bgColor={"#ffffff"} 
+                            fgColor={"#0f172a"} // Dark slate color
+                            level={"H"} 
+                        />
+                    ) : (
+                        <div className="w-[200px] h-[200px] bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs uppercase tracking-widest text-center px-4 border-2 border-dashed border-slate-300">
+                            No Badge Linked
                         </div>
                     )}
                 </div>
 
-                {/* Secure Countdown Timer */}
+                {/* Secure Badge Status */}
                 <div className="flex items-center gap-3 text-teal-200/70 font-bold bg-slate-900/60 border border-white/5 px-5 py-4 rounded-2xl shadow-inner w-full justify-center">
-                    <i className="ph-bold ph-clock-countdown text-2xl text-teal-400"></i>
+                    <i className="ph-bold ph-shield-check text-2xl text-teal-400"></i>
                     <span className="text-[10px] uppercase tracking-widest mt-0.5">
-                        Code refreshes in <span className="text-white text-sm ml-1 font-black">{timeLeft}s</span>
+                        Pass is Cryptographically Secured
                     </span>
                 </div>
             </div>

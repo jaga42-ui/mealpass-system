@@ -4,7 +4,10 @@ import { AuthContext } from './context/AuthContext';
 
 // Import all your polished components
 import Navbar from './components/Navbar';
-import Login from './components/Login';
+import Landing from './pages/Landing'; 
+import Login from './pages/Login';
+import ParticipantLogin from './pages/ParticipantLogin'; 
+import Portal from './pages/Portal'; // 🚀 <-- Added the Portal import!
 import Scanner from './components/Scanner';
 import ParticipantList from './components/ParticipantList';
 import CommandCenter from './components/CommandCenter';
@@ -24,7 +27,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
     }
 
     if (requireAdmin && user.role !== 'admin') {
-        return <Navigate to="/" replace />; // Kick non-admins back to the scanner
+        return <Navigate to="/scan" replace />; // Kick non-admins back to the scanner
     }
 
     return children;
@@ -43,12 +46,18 @@ function App() {
                 
                 <main className="p-4 md:p-8 pt-20 pb-28 max-w-7xl mx-auto">
                     <Routes>
-                        {/* Public Route */}
-                        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+                        {/* 🌍 PUBLIC ROUTES */}
+                        {/* If they are already logged in, skip the landing page and go straight to work */}
+                        <Route path="/" element={!user ? <Landing /> : <Navigate to="/scan" />} />
+                        <Route path="/login" element={!user ? <Login /> : <Navigate to="/scan" />} />
+                        <Route path="/pass" element={<ParticipantLogin />} />
+                        
+                        {/* 🚀 <-- Added the Portal Route here! */}
+                        <Route path="/portal" element={<Portal />} /> 
 
-                        {/* Universal Protected Route (Both Volunteers & Admins) */}
+                        {/* 🛡️ UNIVERSAL PROTECTED ROUTE (Both Volunteers & Admins) */}
                         <Route 
-                            path="/" 
+                            path="/scan" 
                             element={
                                 <ProtectedRoute>
                                     <Scanner />

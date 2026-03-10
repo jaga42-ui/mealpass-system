@@ -38,7 +38,8 @@ const Navbar = () => {
             <nav className="fixed bottom-0 left-0 w-full z-[500] bg-slate-950/90 backdrop-blur-2xl border-t border-white/10 pb-safe pt-2 px-2 sm:px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
                 <div className="flex items-center justify-around max-w-md mx-auto relative pb-2">
                     
-                    <NavLink to="/" className={navLinkClass}>
+                    {/* 👇 THIS IS THE FIX: to="/scan" */}
+                    <NavLink to="/scan" className={navLinkClass}>
                         <i className="ph-bold ph-scan text-2xl mb-1"></i>
                         <span className="text-[8px] font-black uppercase tracking-widest">Scan</span>
                     </NavLink>
