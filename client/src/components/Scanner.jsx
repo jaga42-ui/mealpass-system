@@ -39,7 +39,7 @@ const Scanner = () => {
             );
         } catch (err) {
             console.error("Camera Start Error:", err);
-            setScanResult({ type: 'error', title: 'Camera Error', message: 'Could not access the camera hardware.' });
+            setScanResult({ type: 'error', title: 'Hardware Error', message: 'Could not access the camera lens.' });
             setIsScanning(false);
         }
     };
@@ -69,16 +69,16 @@ const Scanner = () => {
 
             setScanResult({
                 type: 'success',
-                title: 'Access Granted',
+                title: 'Access Approved',
                 message: response.data.message,
                 participant: response.data.participant
             });
 
         } catch (error) {
-            const errorMsg = error.response?.data?.message || "Invalid Pass";
+            const errorMsg = error.response?.data?.message || "Unrecognized signature";
             setScanResult({
                 type: 'error',
-                title: error.response?.status === 409 ? 'Already Served' : 'Access Denied',
+                title: error.response?.status === 409 ? 'Already Scanned' : 'Access Denied',
                 message: errorMsg,
                 participant: error.response?.data?.participant
             });
@@ -94,21 +94,20 @@ const Scanner = () => {
 
     if (loadingConfig) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] w-full max-w-md mx-auto">
-                <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
-                <p className="text-xs font-medium tracking-widest text-slate-400 uppercase">Loading</p>
+            <div className="flex flex-col items-center justify-center h-[60vh] w-full max-w-md mx-auto space-y-4">
+                <div className="w-8 h-8 border-2 border-white/10 border-t-teal-400 rounded-full animate-spin"></div>
             </div>
         );
     }
 
     if (config.isScannerLocked) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] bg-white/5 backdrop-blur-xl p-8 rounded-3xl border border-white/10 text-center w-full max-w-md mx-auto shadow-sm">
-                <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6 border border-white/10">
-                    <i className="ph-light ph-lock-key text-3xl text-slate-300"></i>
+            <div className="flex flex-col items-center justify-center h-[60vh] bg-slate-900/50 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 text-center w-full max-w-md mx-auto shadow-2xl">
+                <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6 shadow-inner border border-white/5">
+                    <i className="ph-light ph-lock-key text-3xl text-slate-400"></i>
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">Scanner Paused</h3>
-                <p className="text-sm text-slate-400">Scanning has been disabled from the command center.</p>
+                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Terminal Locked</h3>
+                <p className="text-sm text-slate-500 font-light">Scanning is currently paused by the administrator.</p>
             </div>
         );
     }
@@ -116,93 +115,121 @@ const Scanner = () => {
     return (
         <div className="w-full max-w-md mx-auto relative z-20 pb-10 space-y-6">
             
-            {/* Elegant Minimal Header */}
-            <div className="bg-white/5 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between border border-white/10 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
-                        <i className="ph-light ph-scan text-xl text-white"></i>
+            {/* 🎨 INLINE CSS FOR THE LASER ANIMATION */}
+            <style>{`
+                @keyframes laserSweep {
+                    0% { top: 10%; box-shadow: 0 0 20px 2px rgba(45, 212, 191, 0.2); }
+                    50% { box-shadow: 0 0 25px 4px rgba(45, 212, 191, 0.6); }
+                    100% { top: 90%; box-shadow: 0 0 20px 2px rgba(45, 212, 191, 0.2); }
+                }
+                .scanner-laser {
+                    animation: laserSweep 2.5s ease-in-out infinite alternate;
+                }
+            `}</style>
+
+            {/* Elegant Glass Header */}
+            <div className="bg-slate-900/60 backdrop-blur-xl rounded-[2rem] p-5 flex items-center justify-between border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center border border-white/10 shadow-inner">
+                        <i className="ph-light ph-aperture text-2xl text-teal-400"></i>
                     </div>
                     <div>
-                        <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase mb-0.5">Current Session</p>
-                        <p className="text-sm font-semibold text-white tracking-wide">{config.activeMeal}</p>
+                        <p className="text-[10px] text-slate-400 font-semibold tracking-[0.2em] uppercase mb-1">Active Queue</p>
+                        <p className="text-lg font-light text-white tracking-wide">{config.activeMeal}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-                    <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
-                    <span className="text-[10px] font-medium tracking-widest text-emerald-400 uppercase">Ready</span>
+                <div className="flex items-center gap-2 px-4 py-2 bg-teal-500/10 rounded-full border border-teal-500/20 shadow-inner">
+                    <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(45,212,191,1)]"></div>
+                    <span className="text-[10px] font-semibold tracking-widest text-teal-400 uppercase">Live</span>
                 </div>
             </div>
 
-            {/* Clean Camera Container */}
-            <div className="relative w-full aspect-[3/4] bg-slate-900 rounded-[2rem] overflow-hidden shadow-2xl border border-white/10">
+            {/* Camera Viewport */}
+            <div className="relative w-full aspect-[3/4] bg-slate-950 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 ring-1 ring-white/5">
                 
-                {/* Video Feed */}
+                {/* The Video Feed */}
                 <div id="reader" className="w-full h-full object-cover"></div>
+
+                {/* 🔴 THE LASER SCANNER EFFECT */}
+                {isScanning && (
+                    <>
+                        <div className="absolute left-8 right-8 h-[2px] bg-teal-400 rounded-full scanner-laser z-20"></div>
+                        
+                        {/* Elegant Corner Reticles */}
+                        <div className="absolute top-8 left-8 w-12 h-12 border-t border-l border-white/30 rounded-tl-3xl z-10 pointer-events-none"></div>
+                        <div className="absolute top-8 right-8 w-12 h-12 border-t border-r border-white/30 rounded-tr-3xl z-10 pointer-events-none"></div>
+                        <div className="absolute bottom-8 left-8 w-12 h-12 border-b border-l border-white/30 rounded-bl-3xl z-10 pointer-events-none"></div>
+                        <div className="absolute bottom-8 right-8 w-12 h-12 border-b border-r border-white/30 rounded-br-3xl z-10 pointer-events-none"></div>
+                    </>
+                )}
                 
-                {/* Minimalist Start Overlay */}
+                {/* Elegant Inactive Overlay */}
                 {!isScanning && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm">
+                    <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-900/80 backdrop-blur-md">
                         <button 
                             onClick={startScanner} 
                             className="group flex flex-col items-center outline-none"
                         >
-                            <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 transition-transform duration-300 group-hover:scale-105 group-active:scale-95 shadow-lg">
-                                <i className="ph-light ph-camera text-3xl text-white transition-opacity group-hover:opacity-80"></i>
+                            <div className="w-24 h-24 bg-white/5 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/10 transition-all duration-500 group-hover:scale-105 group-hover:bg-white/10 group-active:scale-95 shadow-[0_0_40px_rgba(0,0,0,0.3)]">
+                                <i className="ph-light ph-camera text-4xl text-teal-400/80 group-hover:text-teal-300 transition-colors"></i>
                             </div>
-                            <span className="mt-4 text-[11px] font-medium tracking-widest text-white/90 uppercase">
-                                Tap to Scan
+                            <span className="mt-6 text-[11px] font-semibold tracking-[0.25em] text-slate-300 uppercase transition-colors group-hover:text-white">
+                                Activate Lens
                             </span>
                         </button>
                     </div>
                 )}
 
-                {/* Minimalist Stop Button */}
+                {/* Refined Stop Button */}
                 {isScanning && (
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20">
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
                         <button 
                             onClick={stopScanner} 
-                            className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 py-3 rounded-full text-xs font-medium tracking-widest uppercase flex items-center gap-2 hover:bg-white/20 active:scale-95 transition-all shadow-lg"
+                            className="bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white/90 px-8 py-4 rounded-full text-[10px] font-semibold tracking-widest uppercase flex items-center gap-3 hover:bg-rose-500/90 hover:border-rose-500 hover:text-white active:scale-95 transition-all shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
                         >
-                            Cancel
+                            <div className="w-1.5 h-1.5 bg-rose-400 rounded-full"></div>
+                            Close Lens
                         </button>
                     </div>
                 )}
             </div>
 
-            {/* Refined Result Modal */}
+            {/* 💎 Elegant Result Modal */}
             {scanResult && (
-                <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-slate-950/60 backdrop-blur-md pb-6 px-4 animate-enter">
+                <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-slate-950/40 backdrop-blur-lg pb-6 px-4 animate-enter">
                     <div className="w-full h-full absolute inset-0 cursor-pointer" onClick={closeResult}></div>
                     
-                    <div className="relative w-full max-w-sm mx-auto bg-slate-900/90 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden p-8 flex flex-col items-center text-center">
+                    <div className="relative w-full max-w-md mx-auto bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden p-8 flex flex-col items-center">
                         
-                        {/* Soft Icon */}
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${scanResult.type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                        {/* Soft Glow Behind Icon */}
+                        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-48 h-32 blur-[60px] pointer-events-none rounded-full ${scanResult.type === 'success' ? 'bg-teal-500/20' : 'bg-rose-500/20'}`}></div>
+
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 border relative z-10 shadow-inner ${scanResult.type === 'success' ? 'bg-teal-500/10 border-teal-500/20 text-teal-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
                             <i className={`ph-light text-4xl ${scanResult.type === 'success' ? 'ph-check' : 'ph-x'}`}></i>
                         </div>
 
-                        <h2 className="text-2xl font-semibold text-white mb-2">
+                        <h2 className="text-2xl font-light text-white mb-2 tracking-wide relative z-10">
                             {scanResult.title}
                         </h2>
-                        <p className="text-sm text-slate-400 mb-8">
+                        <p className="text-sm text-slate-400 font-light mb-8 text-center relative z-10">
                             {scanResult.message}
                         </p>
 
-                        <div className="w-full bg-white/5 rounded-2xl p-4 border border-white/5 mb-8">
-                            <p className="text-[10px] text-slate-500 font-medium tracking-widest uppercase mb-1">Participant</p>
-                            <p className="text-lg font-medium text-white truncate">
-                                {scanResult.participant?.name || 'Unknown'}
+                        <div className="w-full bg-black/20 rounded-[1.5rem] p-5 border border-white/5 mb-8 shadow-inner relative z-10 text-center">
+                            <p className="text-[9px] text-slate-500 font-semibold tracking-[0.2em] uppercase mb-2">Participant ID</p>
+                            <p className="text-2xl font-light text-white truncate tracking-wide">
+                                {scanResult.participant?.name || 'Unknown User'}
                             </p>
                             {scanResult.participant?.category && (
-                                <p className="text-xs text-slate-400 mt-1">{scanResult.participant.category}</p>
+                                <p className="text-xs text-slate-400 font-light mt-1">{scanResult.participant.category}</p>
                             )}
                         </div>
                         
                         <button 
                             onClick={closeResult} 
-                            className={`w-full py-4 text-white font-medium tracking-widest uppercase text-xs rounded-xl active:scale-95 transition-all ${scanResult.type === 'success' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
+                            className={`w-full py-5 text-white font-semibold tracking-[0.2em] uppercase text-[11px] rounded-[1.5rem] active:scale-95 transition-all shadow-lg relative z-10 ${scanResult.type === 'success' ? 'bg-teal-500/90 hover:bg-teal-400' : 'bg-rose-500/90 hover:bg-rose-400'}`}
                         >
-                            Done
+                            Continue
                         </button>
                     </div>
                 </div>
