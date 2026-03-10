@@ -3,7 +3,9 @@ const router = express.Router();
 const { 
     getSettings, updateSettings, 
     bulkUploadParticipants, 
-    getAllUsers, updateUserRole 
+    getAllUsers, updateUserRole,
+    generateBulkBadges, // <-- 1. Import the Generator
+    pairBadge           // <-- 2. Import the Pairing Engine
 } = require('../controllers/adminController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
@@ -23,5 +25,9 @@ router.route('/users')
     .get(getAllUsers);
     
 router.put('/users/:id/role', updateUserRole);
+
+// --- 🛡️ SECURE HARDWARE TOKEN ENGINE ---
+router.get('/generate-badges', generateBulkBadges);
+router.post('/pair-badge', pairBadge);
 
 module.exports = router;

@@ -6,6 +6,7 @@ import Scanner from '../components/Scanner';
 import ParticipantList from '../components/ParticipantList';
 import Stats from '../components/Stats'; 
 import CommandCenter from '../components/CommandCenter'; 
+import BadgeGenerator from '../components/BadgeGenerator'; // <-- 1. Import the new component
 
 const Dashboard = () => {
     const { user, logout } = useContext(AuthContext);
@@ -26,7 +27,7 @@ const Dashboard = () => {
             <div className="w-full max-w-md h-full flex flex-col relative z-10 shadow-2xl bg-black/10">
                 
                 {/* Premium Glass Header */}
-                <header className="relative px-6 py-5 z-50 shrink-0 bg-white/5 backdrop-blur-md border-b border-white/10">
+                <header className="relative px-6 py-5 z-50 shrink-0 bg-white/5 backdrop-blur-md border-b border-white/10 print:hidden">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-white shadow-[0_0_15px_rgba(20,184,166,0.4)]">
@@ -52,16 +53,18 @@ const Dashboard = () => {
                 </header>
 
                 {/* Dynamic Content Area */}
-                <main className="flex-1 w-full px-4 overflow-y-auto no-scrollbar pb-32 pt-6">
+                {/* Notice the 'print:overflow-visible' and 'print:pb-0' - this ensures the print view isn't cut off by scrollbars */}
+                <main className="flex-1 w-full px-4 overflow-y-auto no-scrollbar pb-32 pt-6 print:p-0 print:overflow-visible print:bg-white print:h-auto">
                     {activeTab === 'scanner' && <Scanner />}
                     {activeTab === 'register' && user?.role === 'admin' && <AdminPanel />}
                     {activeTab === 'users' && user?.role === 'admin' && <ParticipantList />}
                     {activeTab === 'stats' && user?.role === 'admin' && <Stats />}
                     {activeTab === 'command' && user?.role === 'admin' && <CommandCenter />}
+                    {activeTab === 'print' && user?.role === 'admin' && <BadgeGenerator />} {/* <-- 2. Render the Print Station */}
                 </main>
 
                 {/* Floating Frosted Pill Navigation */}
-                <div className="absolute bottom-6 left-4 right-4 bg-slate-900/80 backdrop-blur-xl border border-white/10 p-2 rounded-3xl flex items-center justify-between shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] z-50">
+                <div className="absolute bottom-6 left-4 right-4 bg-slate-900/80 backdrop-blur-xl border border-white/10 p-2 rounded-3xl flex items-center justify-between shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] z-50 print:hidden">
                     
                     <button 
                         onClick={() => setActiveTab('scanner')}
@@ -75,19 +78,20 @@ const Dashboard = () => {
                     {user?.role === 'admin' && (
                         <>
                             <button 
-                                onClick={() => setActiveTab('register')}
-                                className={`flex flex-col items-center justify-center flex-1 py-3 rounded-2xl active:scale-95 transition-all duration-300 ${activeTab === 'register' ? 'bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] translate-y-[-4px]' : 'text-slate-400 hover:text-teal-200 hover:bg-white/5'}`}
-                            >
-                                <i className={`text-2xl mb-1 ${activeTab === 'register' ? 'ph-fill ph-user-plus' : 'ph-bold ph-user-plus'}`}></i>
-                                <span className="text-[9px] font-black uppercase tracking-wider">Add</span>
-                            </button>
-
-                            <button 
                                 onClick={() => setActiveTab('users')}
                                 className={`flex flex-col items-center justify-center flex-1 py-3 rounded-2xl active:scale-95 transition-all duration-300 ${activeTab === 'users' ? 'bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] translate-y-[-4px]' : 'text-slate-400 hover:text-teal-200 hover:bg-white/5'}`}
                             >
                                 <i className={`text-2xl mb-1 ${activeTab === 'users' ? 'ph-fill ph-users' : 'ph-bold ph-users'}`}></i>
                                 <span className="text-[9px] font-black uppercase tracking-wider">Roster</span>
+                            </button>
+
+                            {/* 🛡️ 3. THE NEW PRINT TAB 🛡️ */}
+                            <button 
+                                onClick={() => setActiveTab('print')}
+                                className={`flex flex-col items-center justify-center flex-1 py-3 rounded-2xl active:scale-95 transition-all duration-300 ${activeTab === 'print' ? 'bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] translate-y-[-4px]' : 'text-slate-400 hover:text-teal-200 hover:bg-white/5'}`}
+                            >
+                                <i className={`text-2xl mb-1 ${activeTab === 'print' ? 'ph-fill ph-printer' : 'ph-bold ph-printer'}`}></i>
+                                <span className="text-[9px] font-black uppercase tracking-wider">Print</span>
                             </button>
 
                             <button 
