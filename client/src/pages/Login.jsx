@@ -29,10 +29,11 @@ const Login = () => {
             // Send the Google token to our backend
             const res = await api.post('/auth/google', { access_token: tokenResponse.access_token });
             
-            // Save the token and redirect
+            // 🚀 THE FIX: Save BOTH the token and the user data to LocalStorage!
             localStorage.setItem('mealpass_token', res.data.token);
+            localStorage.setItem('mealpass_user', JSON.stringify(res.data.user)); 
             
-            // 🚀 FIX #1: Redirect to /scan instead of /dashboard
+            // Force a reload to let AuthContext pick up the new token and route to /scan
             window.location.href = '/scan'; 
         } catch (err) {
             setError(err.response?.data?.message || 'Google authentication failed.');
@@ -56,8 +57,7 @@ const Login = () => {
         alert("Account created successfully! Please log in.");
       } else {
         await login(email, password);
-        
-        // 🚀 FIX #2: Redirect to /scan instead of /dashboard
+        // Safely navigate to the scanner hub
         navigate('/scan'); 
       }
     } catch (err) {
