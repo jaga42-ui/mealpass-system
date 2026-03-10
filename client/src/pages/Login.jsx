@@ -1,7 +1,7 @@
 import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
-import { useGoogleLogin } from '@react-oauth/google'; // <-- 1. Import Google Hook
+import { useGoogleLogin } from '@react-oauth/google';
 import api from '../api/axios';
 
 const Login = () => {
@@ -31,8 +31,9 @@ const Login = () => {
             
             // Save the token and redirect
             localStorage.setItem('mealpass_token', res.data.token);
-            // Force a reload to let AuthContext pick up the new token
-            window.location.href = '/dashboard'; 
+            
+            // 🚀 FIX #1: Redirect to /scan instead of /dashboard
+            window.location.href = '/scan'; 
         } catch (err) {
             setError(err.response?.data?.message || 'Google authentication failed.');
             setLoading(false);
@@ -55,7 +56,9 @@ const Login = () => {
         alert("Account created successfully! Please log in.");
       } else {
         await login(email, password);
-        navigate('/dashboard'); 
+        
+        // 🚀 FIX #2: Redirect to /scan instead of /dashboard
+        navigate('/scan'); 
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Authentication failed. Please try again.');
@@ -111,7 +114,7 @@ const Login = () => {
             </div>
           )}
 
-          {/* 🛡️ NEW: GOOGLE AUTH BUTTON 🛡️ */}
+          {/* 🛡️ GOOGLE AUTH BUTTON 🛡️ */}
           <button 
             type="button" 
             onClick={() => handleGoogleAuth()}
