@@ -1,56 +1,102 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useContext } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthContext } from './context/AuthContext';
 
-// Admin Pages
-import Login from './pages/Login';
-import Landing from './pages/Landing';
-import Dashboard from './pages/Dashboard';
-import ResetPassword from './pages/ResetPassword'; // <-- NEW IMPORT
+// Import all your polished components
+import Navbar from './components/Navbar';
+import Login from './components/Login';
+import Scanner from './components/Scanner';
+import ParticipantList from './components/ParticipantList';
+import CommandCenter from './components/CommandCenter';
+import Stats from './components/Stats';
+import BadgeGenerator from './components/BadgeGenerator';
 
-// Participant Pages
-import ParticipantLogin from './pages/ParticipantLogin';
-import Portal from './pages/Portal';
+// 🛡️ Custom Router Guard
+const ProtectedRoute = ({ children, requireAdmin = false }) => {
+    const { user, isLoading } = useContext(AuthContext);
 
-// A simple wrapper to protect routes from unauthenticated admins/volunteers
-const ProtectedRoute = ({ children }) => {
-  const { user, isLoading } = useContext(AuthContext);
-  if (isLoading) return <div className="h-screen flex items-center justify-center text-teal-400 font-bold animate-pulse">Loading secure terminal...</div>;
-  if (!user) return <Navigate to="/login" replace />;
-  return children;
+    if (isLoading) {
+        return <div className="h-screen flex items-center justify-center bg-slate-950 text-teal-400 font-black animate-pulse tracking-widest uppercase text-xs">Authenticating...</div>;
+    }
+
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+
+    if (requireAdmin && user.role !== 'admin') {
+        return <Navigate to="/" replace />; // Kick non-admins back to the scanner
+    }
+
+    return children;
 };
 
 function App() {
-  return (
-    <Router>
-      <div className="h-screen w-full flex flex-col custom-bg text-slate-800 selection:bg-teal-500 selection:text-white">
-        <Routes>
-          {/* Admin / Volunteer Routes */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          
-          {/* 🛡️ SECURE PASSWORD RECOVERY ROUTE 🛡️ */}
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
+    const { user, isLoading } = useContext(AuthContext);
 
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
+    if (isLoading) return null;
 
-          {/* Public Participant Routes */}
-          <Route path="/pass" element={<ParticipantLogin />} />
-          <Route path="/portal" element={<Portal />} />
+    return (
+        <Router>
+            <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-teal-500/30">
+                {/* Only show Navbar if logged in */}
+                {user && <Navbar />}
+                
+                <main className="p-4 md:p-8 pt-20 pb-28 max-w-7xl mx-auto">
+                    <Routes>
+                        {/* Public Route */}
+                        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
 
-          {/* Fallback - Redirects unknown URLs to the Admin login */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </div>
-    </Router>
-  );
+                        {/* Universal Protected Route (Both Volunteers & Admins) */}
+                        <Route 
+                            path="/" 
+                            element={
+                                <ProtectedRoute>
+                                    <Scanner />
+                                </ProtectedRoute>
+                            } 
+                        />
+
+                        {/* 👑 ADMIN ONLY ROUTES */}
+                        <Route 
+                            path="/dashboard" 
+                            element={
+                                <ProtectedRoute requireAdmin={true}>
+                                    <Stats />
+                                </ProtectedRoute>
+                            } 
+                        />
+                        <Route 
+                            path="/roster" 
+                            element={
+                                <ProtectedRoute requireAdmin={true}>
+                                    <ParticipantList />
+                                </ProtectedRoute>
+                            } 
+                        />
+                        <Route 
+                            path="/command" 
+                            element={
+                                <ProtectedRoute requireAdmin={true}>
+                                    <CommandCenter />
+                                </ProtectedRoute>
+                            } 
+                        />
+                        <Route 
+                            path="/print" 
+                            element={
+                                <ProtectedRoute requireAdmin={true}>
+                                    <BadgeGenerator />
+                                </ProtectedRoute>
+                            } 
+                        />
+
+                        {/* Catch-all redirect */}
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </main>
+            </div>
+        </Router>
+    );
 }
 
 export default App;

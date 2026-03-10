@@ -11,6 +11,11 @@ const CommandCenter = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
 
+    // --- 🚨 PURGE STATE ---
+    const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
+    const [purgeConfirmText, setPurgeConfirmText] = useState('');
+    const [isPurging, setIsPurging] = useState(false);
+
     useEffect(() => {
         fetchSettings();
         fetchUsers();
@@ -59,8 +64,8 @@ const CommandCenter = () => {
                 const wsname = wb.SheetNames[0];
                 const data = XLSX.utils.sheet_to_json(wb.Sheets[wsname]);
 
-                if (data.length > 0 && !data[0].qrId) {
-                    throw new Error("Excel must have a 'qrId' column header.");
+                if (data.length > 0 && !data[0].qrId && Object.keys(data[0]).length > 0) {
+                    // It's okay if qrId is missing, our backend handles it, but let's ensure it's an array
                 }
 
                 const res = await api.post('/admin/bulk-upload', data);
@@ -84,24 +89,24 @@ const CommandCenter = () => {
             const doc = new jsPDF();
             
             doc.setFontSize(22);
-            doc.setTextColor(20, 184, 166); // Updated to match Teal-500
+            doc.setTextColor(20, 184, 166); 
             doc.text("AccessPro - End of Day Report", 14, 20);
             
             autoTable(doc, {
                 startY: 40,
-                headStyles: { fillColor: [20, 184, 166] }, // Updated to match Teal-500
+                headStyles: { fillColor: [20, 184, 166] }, 
                 head: [['Meal Category', 'Total Served']],
                 body: [
-                    ['Breakfast', stats.Breakfast],
-                    ['Lunch', stats.Lunch],
-                    ['Snacks', stats.Snacks],
-                    ['Dinner', stats.Dinner],
+                    ['Breakfast', stats.Breakfast || 0],
+                    ['Lunch', stats.Lunch || 0],
+                    ['Snacks', stats.Snacks || 0],
+                    ['Dinner', stats.Dinner || 0],
                 ],
-                foot: [['GRAND TOTAL', res.data.total]],
+                foot: [['GRAND TOTAL', res.data.total || 0]],
                 footStyles: { fillColor: [240, 240, 240], textColor: [0,0,0], fontStyle: 'bold' }
             });
 
-            doc.save(`AccessPro_Report_${res.data.date}.pdf`);
+            doc.save(`AccessPro_Report_${new Date().toISOString().split('T')[0]}.pdf`);
             showMessage('Stats Report downloaded.', 'success');
         } catch (err) { showMessage('Failed to generate stats.', 'error'); } 
         finally { setLoading(false); }
@@ -150,10 +155,16 @@ const CommandCenter = () => {
                 doc.setDrawColor(200);
                 doc.roundedRect(x, y, badgeWidth, badgeHeight, 3, 3);
 
-                const qrDataUrl = await QRCode.toDataURL(p.qrId, { margin: 1, width: 400 });
-
-                const qrXOffset = x + (badgeWidth - qrSize) / 2;
-                doc.addImage(qrDataUrl, 'PNG', qrXOffset, y + 5, qrSize, qrSize);
+                // Only generate QR if the user has an ID assigned
+                if (p.qrId) {
+                    const qrDataUrl = await QRCode.toDataURL(p.qrId, { margin: 1, width: 400 });
+                    const qrXOffset = x + (badgeWidth - qrSize) / 2;
+                    doc.addImage(qrDataUrl, 'PNG', qrXOffset, y + 5, qrSize, qrSize);
+                } else {
+                    doc.setFontSize(10);
+                    doc.setTextColor(150);
+                    doc.text("UNASSIGNED", x + 12, y + 25);
+                }
 
                 doc.setFontSize(10);
                 doc.setTextColor(30);
@@ -165,7 +176,7 @@ const CommandCenter = () => {
                 doc.setFontSize(8);
                 doc.setTextColor(100);
                 doc.setFont("helvetica", "normal");
-                const subText = `${p.qrId} • ${p.category}`;
+                const subText = `${p.qrId ? p.qrId.split('-')[0] : 'NO BADGE'} • ${p.category}`;
                 const subTextWidth = doc.getTextWidth(subText);
                 doc.text(subText, x + (badgeWidth - subTextWidth) / 2, y + 58);
 
@@ -183,13 +194,29 @@ const CommandCenter = () => {
         }
     };
 
+    // --- 6. NUCLEAR PURGE LOGIC ---
+    const executePurge = async () => {
+        if (purgeConfirmText !== 'PURGE') return;
+        setIsPurging(true);
+        try {
+            await api.delete('/admin/purge');
+            showMessage('SYSTEM PURGED. All rosters and scan data wiped.', 'success');
+            setIsPurgeModalOpen(false);
+            setPurgeConfirmText('');
+        } catch (error) {
+            showMessage('Purge failed. Check server logs.', 'error');
+        } finally {
+            setIsPurging(false);
+        }
+    };
+
     const showMessage = (text, type) => {
         setMessage({ text, type });
         setTimeout(() => setMessage(null), 4000);
     };
 
     return (
-        <div className="space-y-6 animate-enter w-full max-w-md mx-auto">
+        <div className="space-y-6 animate-enter w-full max-w-md mx-auto pb-10">
             
             {message && (
                 <div className={`p-4 rounded-2xl text-[11px] font-bold text-center backdrop-blur-sm shadow-lg animate-enter border ${message.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-teal-500/10 border-teal-500/30 text-teal-300'}`}>
@@ -236,8 +263,8 @@ const CommandCenter = () => {
             {/* SECTION 2: DATA OPERATIONS */}
             <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
                 <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3 tracking-wide">
-                    <div className="w-8 h-8 bg-teal-500/20 border border-teal-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.2)]">
-                        <i className="ph-bold ph-database text-teal-400"></i>
+                    <div className="w-8 h-8 bg-blue-500/20 border border-blue-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+                        <i className="ph-bold ph-database text-blue-400"></i>
                     </div>
                     Data Center
                 </h3>
@@ -252,10 +279,10 @@ const CommandCenter = () => {
                     <button 
                         onClick={generateStatsPDF}
                         disabled={loading}
-                        className="flex flex-col items-center justify-center py-5 bg-rose-500/10 hover:bg-rose-500/20 rounded-2xl transition-all duration-300 text-center border border-rose-500/30 hover:shadow-[0_0_20px_rgba(244,63,94,0.2)] active:scale-95 disabled:opacity-50 group"
+                        className="flex flex-col items-center justify-center py-5 bg-blue-500/10 hover:bg-blue-500/20 rounded-2xl transition-all duration-300 text-center border border-blue-500/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] active:scale-95 disabled:opacity-50 group"
                     >
-                        <i className="ph-duotone ph-file-pdf text-3xl text-rose-400 mb-2 group-hover:scale-110 transition-transform"></i>
-                        <span className="text-[9px] font-black text-rose-300/80 uppercase tracking-widest">Report</span>
+                        <i className="ph-duotone ph-file-pdf text-3xl text-blue-400 mb-2 group-hover:scale-110 transition-transform"></i>
+                        <span className="text-[9px] font-black text-blue-300/80 uppercase tracking-widest">Report</span>
                     </button>
 
                     <button 
@@ -302,6 +329,74 @@ const CommandCenter = () => {
                     {users.length === 0 && <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 text-center py-4">No staff found.</p>}
                 </div>
             </div>
+
+            {/* SECTION 4: 🚨 DANGER ZONE 🚨 */}
+            <div className="bg-rose-950/20 border border-rose-500/30 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] relative overflow-hidden mt-8">
+                <div className="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none"></div>
+                <h3 className="font-black text-rose-500 text-lg mb-2 flex items-center gap-3 tracking-wide relative z-10">
+                    <div className="w-8 h-8 bg-rose-500/20 border border-rose-500/50 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(244,63,94,0.3)]">
+                        <i className="ph-bold ph-warning-octagon text-rose-400"></i>
+                    </div>
+                    Danger Zone
+                </h3>
+                <p className="text-[10px] text-rose-300/60 uppercase tracking-widest mb-5 relative z-10 ml-11">Irreversible destructive actions</p>
+
+                <div className="flex items-center justify-between bg-black/40 border border-rose-500/20 p-4 rounded-2xl shadow-inner relative z-10">
+                    <div>
+                        <h4 className="text-white font-black text-sm tracking-wide">Purge Database</h4>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-1">Wipe rosters & scans</p>
+                    </div>
+                    <button 
+                        onClick={() => setIsPurgeModalOpen(true)}
+                        className="px-4 py-2 bg-rose-500 hover:bg-rose-400 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-[0_0_15px_rgba(244,63,94,0.4)] active:scale-95 transition-all"
+                    >
+                        Initiate
+                    </button>
+                </div>
+            </div>
+
+            {/* 🚨 PURGE CONFIRMATION MODAL 🚨 */}
+            {isPurgeModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-6">
+                    <div className="bg-slate-900 border border-rose-500/50 w-full max-w-sm rounded-[2.5rem] p-8 shadow-[0_0_50px_rgba(244,63,94,0.2)] animate-enter relative overflow-hidden text-center">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-rose-500"></div>
+                        
+                        <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-rose-500/50">
+                            <i className="ph-fill ph-warning-diamond text-4xl text-rose-500 animate-pulse"></i>
+                        </div>
+                        
+                        <h3 className="text-2xl font-black text-white mb-2">Confirm Purge</h3>
+                        <p className="text-[11px] text-rose-300 font-bold uppercase tracking-widest leading-relaxed mb-6">
+                            This will permanently destroy all participant records and meal scan history.
+                        </p>
+
+                        <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] block mb-2">Type "PURGE" to confirm</label>
+                        <input 
+                            type="text" 
+                            value={purgeConfirmText}
+                            onChange={(e) => setPurgeConfirmText(e.target.value)}
+                            className="w-full bg-black/50 border border-rose-500/30 rounded-xl py-4 text-center text-white font-black tracking-widest focus:outline-none focus:border-rose-400 mb-6 uppercase"
+                            placeholder="PURGE"
+                        />
+
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => {setIsPurgeModalOpen(false); setPurgeConfirmText('');}}
+                                className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-white/10"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={executePurge}
+                                disabled={purgeConfirmText !== 'PURGE' || isPurging}
+                                className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all ${purgeConfirmText === 'PURGE' ? 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'bg-slate-800 text-slate-600'}`}
+                            >
+                                {isPurging ? 'Purging...' : 'Destroy Data'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );

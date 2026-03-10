@@ -9,7 +9,7 @@ const Scanner = () => {
     const [loadingConfig, setLoadingConfig] = useState(true);
     const scannerRef = useRef(null);
 
-    // 1. Fetch the live Command Center settings on load
+    // Fetch the live Command Center settings on load
     useEffect(() => {
         const fetchConfig = async () => {
             try {
@@ -34,13 +34,14 @@ const Scanner = () => {
             scannerRef.current = new Html5Qrcode("reader");
             await scannerRef.current.start(
                 { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
+                // 🛡️ REMOVED 'qrbox' so the camera scans edge-to-edge flawlessly
+                { fps: 15 }, 
                 onScanSuccess,
                 onScanFailure
             );
         } catch (err) {
             console.error("Camera Start Error:", err);
-            setScanResult({ type: 'error', title: 'Camera Error', message: 'Could not access the camera.' });
+            setScanResult({ type: 'error', title: 'Camera Error', message: 'Could not access the camera hardware.' });
             setIsScanning(false);
         }
     };
@@ -59,20 +60,12 @@ const Scanner = () => {
 
         try {
             let payload = {};
-
-            // THE HYBRID ENGINE
+            // The Hybrid Engine
             try {
                 const parsedData = JSON.parse(decodedText);
-                payload = {
-                    qrId: parsedData.qrId,
-                    totp: parsedData.totp,
-                    mealType: config.activeMeal
-                };
+                payload = { qrId: parsedData.qrId, totp: parsedData.totp, mealType: config.activeMeal };
             } catch (e) {
-                payload = {
-                    qrId: decodedText.trim().toUpperCase(),
-                    mealType: config.activeMeal
-                };
+                payload = { qrId: decodedText.trim().toUpperCase(), mealType: config.activeMeal };
             }
             
             const response = await api.post('/scans/verify', payload);
@@ -85,7 +78,7 @@ const Scanner = () => {
             });
 
         } catch (error) {
-            const errorMsg = error.response?.data?.message || "Invalid QR Code format";
+            const errorMsg = error.response?.data?.message || "Invalid QR Payload";
             setScanResult({
                 type: 'error',
                 title: error.response?.status === 409 ? 'ALREADY SERVED' : 'ACCESS DENIED',
@@ -95,7 +88,7 @@ const Scanner = () => {
         }
     };
 
-    const onScanFailure = (error) => { /* ignore empty scans */ };
+    const onScanFailure = (error) => { /* Ignore empty frames */ };
 
     const closeResult = () => {
         setScanResult(null);
@@ -104,118 +97,149 @@ const Scanner = () => {
 
     if (loadingConfig) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 animate-pulse w-full max-w-md mx-auto">
-                <i className="ph-duotone ph-arrows-clockwise text-4xl text-teal-500 animate-spin mb-4 shadow-[0_0_20px_rgba(20,184,166,0.5)] rounded-full"></i>
-                <p className="text-[10px] font-black uppercase tracking-widest text-teal-300">Syncing with Command...</p>
+            <div className="flex flex-col items-center justify-center h-[60vh] w-full max-w-md mx-auto">
+                <div className="relative flex justify-center items-center w-24 h-24 mb-6">
+                    <div className="absolute inset-0 border-t-2 border-teal-500 rounded-full animate-spin"></div>
+                    <div className="absolute inset-2 border-r-2 border-teal-400 rounded-full animate-[spin_1.5s_linear_infinite_reverse]"></div>
+                    <i className="ph-fill ph-scan text-3xl text-teal-300 animate-pulse"></i>
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-teal-300">Synchronizing Uplink</p>
             </div>
         );
     }
 
-    // THE LOCKDOWN SCREEN
     if (config.isScannerLocked) {
         return (
-            <div className="flex flex-col items-center justify-center h-80 bg-slate-900/80 backdrop-blur-2xl p-8 rounded-[2.5rem] border border-red-500/30 text-center animate-enter shadow-[0_20px_50px_-10px_rgba(239,68,68,0.2)] w-full max-w-md mx-auto relative overflow-hidden">
-                <div className="absolute inset-0 bg-red-500/5 animate-pulse"></div>
-                <div className="w-20 h-20 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(239,68,68,0.4)] relative z-10">
-                    <i className="ph-fill ph-lock-key text-5xl text-red-500 animate-pulse"></i>
+            <div className="flex flex-col items-center justify-center h-[60vh] bg-rose-500/5 backdrop-blur-3xl p-8 rounded-[3rem] border border-rose-500/20 text-center animate-enter shadow-[0_20px_60px_-15px_rgba(244,63,94,0.3)] w-full max-w-md mx-auto">
+                <div className="w-24 h-24 bg-rose-500/20 rounded-[2rem] flex items-center justify-center mb-8 border border-rose-500/30 shadow-[0_0_40px_rgba(244,63,94,0.4)] relative">
+                    <div className="absolute inset-0 bg-rose-500 rounded-[2rem] blur-xl opacity-20 animate-pulse"></div>
+                    <i className="ph-fill ph-lock-key text-6xl text-rose-400 drop-shadow-lg"></i>
                 </div>
-                <h3 className="text-3xl font-black text-white tracking-wide relative z-10">System Locked</h3>
-                <p className="text-[11px] font-bold text-red-200/70 mt-3 uppercase tracking-widest leading-relaxed relative z-10">
-                    The Admin has paused all scanning operations. Please wait for clearance.
+                <h3 className="text-4xl font-black text-white tracking-tight mb-2">Locked</h3>
+                <p className="text-xs font-bold text-rose-300/80 uppercase tracking-widest leading-relaxed">
+                    Command Center has paused access operations.
                 </p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-5 animate-enter w-full max-w-md mx-auto relative z-20">
+        <div className="space-y-6 animate-enter w-full max-w-md mx-auto relative z-20 pb-10">
             
-            {/* Read-Only Meal Status Header */}
-            <div className="bg-white/5 backdrop-blur-2xl p-5 rounded-[2rem] flex items-center justify-between shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-white/10">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-teal-500/20 border border-teal-500/30 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.2)]">
-                        <i className="ph-bold ph-crosshair text-2xl text-teal-400"></i>
+            {/* 🎯 ULTRA-PREMIUM STATUS HEADER */}
+            <div className="relative bg-white/5 backdrop-blur-3xl p-1 rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-transparent opacity-50"></div>
+                <div className="relative flex items-center justify-between p-4 bg-slate-900/40 rounded-[2rem]">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-600 rounded-[1.5rem] flex items-center justify-center shadow-[0_0_20px_rgba(20,184,166,0.4)]">
+                            <i className="ph-fill ph-target text-2xl text-white"></i>
+                        </div>
+                        <div>
+                            <div className="text-[9px] font-black text-teal-300/70 uppercase tracking-[0.25em] mb-1">Active Target</div>
+                            <div className="text-2xl font-black text-white tracking-tight leading-none">{config.activeMeal}</div>
+                        </div>
                     </div>
-                    <div>
-                        <div className="text-[9px] font-black text-teal-200/50 uppercase tracking-[0.2em] leading-none mb-1">Targeting</div>
-                        <div className="text-xl font-black text-white tracking-wide">{config.activeMeal}</div>
+                    <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center gap-2">
+                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(52,211,153,1)]"></div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Live</span>
                     </div>
-                </div>
-                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded-xl shadow-inner">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]"></div>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] mt-0.5">Live</span>
                 </div>
             </div>
 
-            {/* Camera Container */}
-            <div className="relative w-full aspect-square bg-slate-950 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 group">
-                {/* The glowing target brackets */}
-                <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-teal-500/70 rounded-tl-xl pointer-events-none z-10"></div>
-                <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-teal-500/70 rounded-tr-xl pointer-events-none z-10"></div>
-                <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-teal-500/70 rounded-bl-xl pointer-events-none z-10"></div>
-                <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-teal-500/70 rounded-br-xl pointer-events-none z-10"></div>
-
-                <div id="reader" className="w-full h-full opacity-90 object-cover"></div>
+            {/* 📸 SLEEK PORTRAIT CAMERA CONTAINER */}
+            <div className="relative w-full aspect-[3/4] bg-slate-950/80 backdrop-blur-xl rounded-[3rem] overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] border border-white/10 group">
                 
+                {/* Clean, minimal reticle corners */}
+                <div className="absolute top-10 left-10 w-10 h-10 border-t-[3px] border-l-[3px] border-white/30 rounded-tl-2xl pointer-events-none z-10 transition-colors duration-500 group-hover:border-teal-400/80"></div>
+                <div className="absolute top-10 right-10 w-10 h-10 border-t-[3px] border-r-[3px] border-white/30 rounded-tr-2xl pointer-events-none z-10 transition-colors duration-500 group-hover:border-teal-400/80"></div>
+                <div className="absolute bottom-10 left-10 w-10 h-10 border-b-[3px] border-l-[3px] border-white/30 rounded-bl-2xl pointer-events-none z-10 transition-colors duration-500 group-hover:border-teal-400/80"></div>
+                <div className="absolute bottom-10 right-10 w-10 h-10 border-b-[3px] border-r-[3px] border-white/30 rounded-br-2xl pointer-events-none z-10 transition-colors duration-500 group-hover:border-teal-400/80"></div>
+
+                {/* The Video Output */}
+                <div id="reader" className="w-full h-full object-cover"></div>
+                
+                {/* Custom Overlay for Scanner Initialization */}
                 {!isScanning && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm z-20">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-900/90 to-slate-950/95 z-20">
+                        <div className="w-32 h-32 mb-8 relative flex items-center justify-center">
+                            <div className="absolute inset-0 border-2 border-dashed border-teal-500/30 rounded-full animate-[spin_10s_linear_infinite]"></div>
+                            <button 
+                                onClick={startScanner} 
+                                className="w-24 h-24 bg-gradient-to-br from-teal-400 to-teal-600 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(20,184,166,0.4)] hover:scale-105 active:scale-95 transition-all duration-300"
+                            >
+                                <i className="ph-fill ph-camera text-4xl text-white"></i>
+                            </button>
+                        </div>
+                        <h4 className="text-white font-black text-xl tracking-wide mb-2">Lens Offline</h4>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center px-10">
+                            Tap the lens to initialize the optical matrix and begin scanning.
+                        </p>
+                    </div>
+                )}
+
+                {/* Floating Stop Button (Only visible while scanning) */}
+                {isScanning && (
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
                         <button 
-                            onClick={startScanner} 
-                            className="w-24 h-24 bg-teal-500 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(20,184,166,0.6)] hover:scale-105 transition-transform active:scale-95 group-hover:bg-teal-400"
+                            onClick={stopScanner} 
+                            className="bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-rose-500 hover:border-rose-400 transition-all duration-300 active:scale-95 shadow-[0_10px_30px_rgba(0,0,0,0.5)] group/btn"
                         >
-                            <i className="ph-fill ph-camera text-4xl text-white"></i>
+                            <div className="w-2 h-2 bg-rose-500 rounded-full group-hover/btn:bg-white animate-pulse"></div>
+                            Disengage
                         </button>
-                        <p className="mt-6 text-[11px] font-black text-teal-200 uppercase tracking-[0.3em] drop-shadow-lg">Tap to Scan</p>
                     </div>
                 )}
             </div>
 
-            {isScanning && (
-                <button 
-                    onClick={stopScanner} 
-                    className="w-full h-16 bg-white/5 backdrop-blur-xl border border-rose-500/30 text-rose-400 font-black tracking-widest uppercase rounded-2xl shadow-lg hover:bg-rose-500/10 hover:border-rose-500/50 transition-all flex items-center justify-center gap-3 active:scale-95 text-[11px]"
-                >
-                    <i className="ph-bold ph-stop-circle text-xl"></i>
-                    <span className="mt-0.5">Stop Camera</span>
-                </button>
-            )}
-
-            {/* Neon Dark Mode Result Modal Overlay */}
+            {/* ✨ APPLE-PAY STYLE RESULT MODAL ✨ */}
             {scanResult && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-6">
-                    <div className={`bg-slate-900 w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.9)] border ${scanResult.type === 'success' ? 'border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.2)]' : 'border-rose-500/50 shadow-[0_0_50px_rgba(244,63,94,0.2)]'} animate-enter relative`}>
+                <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-slate-950/80 backdrop-blur-md pb-6 px-4 animate-enter">
+                    {/* Background click listener to close modal */}
+                    <div className="w-full h-full absolute inset-0 cursor-pointer" onClick={closeResult}></div>
+                    
+                    <div className={`relative w-full max-w-md mx-auto rounded-[3rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,1)] border ${scanResult.type === 'success' ? 'bg-slate-900 border-emerald-500/30' : 'bg-slate-900 border-rose-500/30'} transform transition-all`}>
                         
-                        {/* Glowing Background Gradient */}
-                        <div className={`absolute top-0 w-full h-32 opacity-20 ${scanResult.type === 'success' ? 'bg-gradient-to-b from-emerald-500 to-transparent' : 'bg-gradient-to-b from-rose-500 to-transparent'}`}></div>
+                        {/* Dramatic Glow Effect */}
+                        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 blur-[80px] rounded-full pointer-events-none ${scanResult.type === 'success' ? 'bg-emerald-500/40' : 'bg-rose-500/40'}`}></div>
 
-                        <div className={`relative p-6 border-b flex flex-col items-center gap-4 pt-10 ${scanResult.type === 'success' ? 'border-emerald-500/20' : 'border-rose-500/20'}`}>
-                            <div className={`w-20 h-20 rounded-full flex items-center justify-center shrink-0 border-4 ${scanResult.type === 'success' ? 'bg-emerald-500/20 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.5)]' : 'bg-rose-500/20 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.5)]'}`}>
-                                <i className={`ph-fill ${scanResult.type === 'success' ? 'ph-check text-4xl text-emerald-400' : 'ph-x text-4xl text-rose-400'}`}></i>
-                            </div>
-                            <div className="text-center mt-2">
-                                <div className={`text-2xl font-black tracking-wide leading-none ${scanResult.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                    {scanResult.title}
-                                </div>
-                                <div className="text-[11px] font-bold mt-3 text-slate-300 uppercase tracking-widest px-4">
-                                    {scanResult.message}
+                        <div className="relative pt-12 pb-8 px-6 flex flex-col items-center">
+                            
+                            {/* Animated Icon Ring */}
+                            <div className="relative mb-6">
+                                <div className={`absolute inset-0 rounded-full animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite] opacity-20 ${scanResult.type === 'success' ? 'bg-emerald-400' : 'bg-rose-400'}`}></div>
+                                <div className={`w-28 h-28 rounded-full flex items-center justify-center border-4 relative z-10 ${scanResult.type === 'success' ? 'bg-emerald-500/10 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.3)]' : 'bg-rose-500/10 border-rose-400 shadow-[0_0_40px_rgba(244,63,94,0.3)]'}`}>
+                                    <i className={`ph-fill ${scanResult.type === 'success' ? 'ph-check-circle text-6xl text-emerald-400' : 'ph-warning-circle text-6xl text-rose-400'} drop-shadow-lg`}></i>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div className="p-8 bg-slate-900/50 relative">
-                            <div className="text-center">
-                                <div className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] mb-2">Participant ID</div>
-                                <div className="text-2xl font-black text-white leading-tight mb-8">
-                                    {scanResult.participant?.name || 'Unknown Entity'}
+
+                            {/* Massive Typography */}
+                            <h2 className={`text-3xl font-black tracking-tight mb-2 text-center ${scanResult.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                {scanResult.title}
+                            </h2>
+                            <p className="text-[11px] font-bold text-slate-300 uppercase tracking-[0.2em] text-center bg-black/20 px-4 py-2 rounded-xl mb-6 border border-white/5">
+                                {scanResult.message}
+                            </p>
+
+                            {/* Participant Identity Box */}
+                            <div className="w-full bg-slate-950/50 border border-white/5 rounded-[2rem] p-6 text-center shadow-inner mb-6">
+                                <div className="text-[9px] font-black uppercase text-slate-500 tracking-[0.25em] mb-2">Identity Confirmed</div>
+                                <div className="text-3xl font-black text-white leading-none truncate px-2">
+                                    {scanResult.participant?.name || 'Unidentified'}
                                 </div>
+                                {scanResult.participant?.category && (
+                                    <div className="inline-block mt-4 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border bg-white/5 border-white/10 text-slate-300">
+                                        Role: {scanResult.participant.category}
+                                    </div>
+                                )}
                             </div>
                             
+                            {/* Call to Action */}
                             <button 
                                 onClick={closeResult} 
-                                className={`w-full py-4 text-white font-black tracking-widest uppercase text-[11px] rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${scanResult.type === 'success' ? 'bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-rose-500 hover:bg-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]'}`}
+                                className={`w-full py-5 text-white font-black tracking-[0.2em] uppercase text-xs rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 ${scanResult.type === 'success' ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-[0_10px_30px_rgba(16,185,129,0.3)]' : 'bg-gradient-to-r from-rose-500 to-rose-400 shadow-[0_10px_30px_rgba(244,63,94,0.3)]'}`}
                             >
-                                <i className="ph-bold ph-scan text-lg"></i>
-                                <span>Next Scan</span>
+                                <i className="ph-bold ph-scan text-xl"></i>
+                                Scan Next
                             </button>
                         </div>
                     </div>

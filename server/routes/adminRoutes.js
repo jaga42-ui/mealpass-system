@@ -4,8 +4,11 @@ const {
     getSettings, updateSettings, 
     bulkUploadParticipants, 
     getAllUsers, updateUserRole,
-    generateBulkBadges, // <-- 1. Import the Generator
-    pairBadge           // <-- 2. Import the Pairing Engine
+    generateBulkBadges, 
+    pairBadge,
+    updateParticipant,   
+    deleteParticipant,
+    purgeDatabase // <-- Imported the Purge
 } = require('../controllers/adminController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
@@ -26,8 +29,16 @@ router.route('/users')
     
 router.put('/users/:id/role', updateUserRole);
 
-// --- 🛡️ SECURE HARDWARE TOKEN ENGINE ---
+// Secure Hardware Token Engine
 router.get('/generate-badges', generateBulkBadges);
 router.post('/pair-badge', pairBadge);
+
+// God Mode Controls
+router.route('/participants/:id')
+    .put(updateParticipant)
+    .delete(deleteParticipant);
+
+// --- 🚨 DANGER ZONE ---
+router.delete('/purge', purgeDatabase);
 
 module.exports = router;
