@@ -4,7 +4,8 @@
 
 @layer base {
   body {
-    @apply font-sans overflow-hidden;
+    /* 👇 Removed overflow-hidden, added overflow-y-auto and overflow-x-hidden */
+    @apply font-sans overflow-y-auto overflow-x-hidden bg-slate-950;
     -webkit-tap-highlight-color: transparent;
   }
 }
@@ -18,5 +19,9 @@
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
   }
 }
