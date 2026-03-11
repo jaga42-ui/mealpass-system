@@ -355,10 +355,10 @@ const CommandCenter = () => {
                 </div>
             </div>
 
-            {/* 🚨 PURGE CONFIRMATION MODAL 🚨 */}
+            {/* 🚨 SCROLL-PROOFED PURGE CONFIRMATION MODAL 🚨 */}
             {isPurgeModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-6">
-                    <div className="bg-slate-900 border border-rose-500/50 w-full max-w-sm rounded-[2.5rem] p-8 shadow-[0_0_50px_rgba(244,63,94,0.2)] animate-enter relative overflow-hidden text-center">
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 sm:p-6 overflow-y-auto">
+                    <div className="bg-slate-900 border border-rose-500/50 w-full max-w-sm rounded-[2.5rem] p-8 shadow-[0_0_50px_rgba(244,63,94,0.2)] animate-enter relative overflow-hidden text-center my-auto">
                         <div className="absolute top-0 left-0 w-full h-1 bg-rose-500"></div>
                         
                         <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-rose-500/50">

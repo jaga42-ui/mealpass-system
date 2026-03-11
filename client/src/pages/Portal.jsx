@@ -27,8 +27,8 @@ const Portal = () => {
     const qrPayload = portalData.qrId;
 
     return (
-        // Full-screen deep teal gradient
-        <div className="fixed inset-0 w-full h-full bg-gradient-to-br from-teal-950 via-teal-900 to-slate-900 flex flex-col items-center justify-center p-6 font-sans overflow-hidden">
+        // 👇 Scroll-lock removed! Replaced with min-h-screen and overflow-y-auto 👇
+        <div className="min-h-screen w-full bg-gradient-to-br from-teal-950 via-teal-900 to-slate-900 flex flex-col items-center justify-center p-6 py-12 font-sans relative overflow-x-hidden overflow-y-auto">
             
             {/* Background glow effects */}
             <div className="absolute top-[10%] left-[-10%] w-96 h-96 bg-teal-500/20 rounded-full blur-[100px] pointer-events-none"></div>

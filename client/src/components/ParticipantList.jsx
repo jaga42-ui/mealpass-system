@@ -203,8 +203,8 @@ const ParticipantList = () => {
     return (
         <div className="flex flex-col h-full animate-enter w-full max-w-md mx-auto pb-20 relative z-20">
             
-            {/* STICKY HEADER AREA */}
-            <div className="sticky top-0 z-30 pt-4 pb-4 bg-slate-900/80 backdrop-blur-2xl border-b border-white/10 mx-[-1rem] px-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+            {/* 👇 FIX: Changed top-0 to top-16 so it docks under the new global Navbar! */}
+            <div className="sticky top-16 z-30 pt-4 pb-4 bg-slate-950/90 backdrop-blur-xl border-b border-white/10 mx-[-1rem] px-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
                 <div className="flex items-center justify-between mb-5">
                     <h3 className="font-black text-white text-lg flex items-center gap-3 tracking-wide">
                         <div className="w-8 h-8 bg-teal-500/20 border border-teal-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.2)]">
@@ -345,101 +345,71 @@ const ParticipantList = () => {
 
             {/* 🛡️ PAIRING CAMERA MODAL */}
             {pairingUser && (
-                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-xl p-6">
-                    <div className="text-center mb-6 z-10">
-                        <h2 className="text-2xl font-black text-white tracking-wide">Assign Badge</h2>
-                        <p className="text-teal-400 font-bold uppercase tracking-widest mt-1 text-[11px]">To: {pairingUser.name}</p>
-                    </div>
-                    <div className="relative w-full max-w-sm aspect-square bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-[0_0_50px_rgba(20,184,166,0.2)] border border-teal-500/30 z-10 group">
-                        <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-teal-500/70 rounded-tl-xl pointer-events-none z-10"></div>
-                        <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-teal-500/70 rounded-tr-xl pointer-events-none z-10"></div>
-                        <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-teal-500/70 rounded-bl-xl pointer-events-none z-10"></div>
-                        <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-teal-500/70 rounded-br-xl pointer-events-none z-10"></div>
-                        <div id="pair-reader" className="w-full h-full object-cover"></div>
-                    </div>
-                    <button onClick={stopCamera} className="mt-8 px-8 py-4 bg-white/10 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl hover:bg-white/20 transition-all z-10 flex items-center gap-2">
-                        <i className="ph-bold ph-x"></i> Cancel Pairing
-                    </button>
-
-                    {pairResult && (
-                        <div className="absolute inset-0 z-[110] flex items-center justify-center bg-slate-950/90 p-6 animate-enter">
-                            <div className={`bg-slate-900 w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl border ${pairResult.type === 'success' ? 'border-emerald-500/50' : 'border-rose-500/50'}`}>
-                                <div className={`p-8 text-center border-b ${pairResult.type === 'success' ? 'border-emerald-500/20' : 'border-rose-500/20'}`}>
-                                    <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 border-4 ${pairResult.type === 'success' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-rose-500/20 border-rose-500 text-rose-400'}`}>
-                                        <i className={`ph-fill text-4xl ${pairResult.type === 'success' ? 'ph-link' : 'ph-x'}`}></i>
-                                    </div>
-                                    <h3 className={`text-2xl font-black ${pairResult.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>{pairResult.title}</h3>
-                                    <p className="text-[11px] font-bold mt-2 text-slate-300 uppercase tracking-widest">{pairResult.message}</p>
-                                </div>
-                                <div className="p-6 bg-slate-900/50">
-                                    <button onClick={handleNextAction} className={`w-full py-4 text-white font-black tracking-widest uppercase text-[11px] rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 ${pairResult.type === 'success' ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-rose-500 hover:bg-rose-400'}`}>
-                                        <i className={`ph-bold ${pairResult.type === 'success' ? 'ph-check' : 'ph-arrow-counter-clockwise'}`}></i>
-                                        {pairResult.type === 'success' ? 'Finish' : 'Try Again'}
-                                    </button>
-                                </div>
-                            </div>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-6 overflow-y-auto">
+                    <div className="my-auto w-full max-w-sm flex flex-col items-center">
+                        <div className="text-center mb-6 z-10">
+                            <h2 className="text-2xl font-black text-white tracking-wide">Assign Badge</h2>
+                            <p className="text-teal-400 font-bold uppercase tracking-widest mt-1 text-[11px]">To: {pairingUser.name}</p>
                         </div>
-                    )}
-                </div>
-            )}
+                        <div className="relative w-full max-w-sm aspect-square bg-slate-900 rounded-[2.5rem] overflow-hidden shadow-[0_0_50px_rgba(20,184,166,0.2)] border border-teal-500/30 z-10 group">
+                            <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-teal-500/70 rounded-tl-xl pointer-events-none z-10"></div>
+                            <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-teal-500/70 rounded-tr-xl pointer-events-none z-10"></div>
+                            <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-teal-500/70 rounded-bl-xl pointer-events-none z-10"></div>
+                            <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-teal-500/70 rounded-br-xl pointer-events-none z-10"></div>
+                            <div id="pair-reader" className="w-full h-full object-cover"></div>
+                        </div>
+                        <button onClick={stopCamera} className="mt-8 px-8 py-4 bg-white/10 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl hover:bg-white/20 transition-all z-10 flex items-center gap-2">
+                            <i className="ph-bold ph-x"></i> Cancel Pairing
+                        </button>
 
-            {/* 🚶 WALK-IN MODAL */}
-            {isWalkinOpen && (
-                <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-6">
-                    <div className="bg-slate-900 w-full max-w-sm rounded-[2.5rem] border border-white/10 p-8 shadow-2xl animate-enter">
-                        <h3 className="text-2xl font-black text-white mb-6 flex items-center gap-3">
-                            <i className="ph-fill ph-user-plus text-teal-400"></i>
-                            Walk-in Entry
-                        </h3>
-                        <form onSubmit={handleWalkin} className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest">Full Name</label>
-                                <input required value={walkinData.name} onChange={(e) => setWalkinData({...walkinData, name: e.target.value})} className="w-full bg-slate-800 border border-white/5 rounded-2xl py-4 px-5 text-white font-bold focus:border-teal-400 focus:outline-none" placeholder="e.g. Jagannath Das" />
+                        {pairResult && (
+                            <div className="absolute inset-0 z-[110] flex items-center justify-center bg-slate-950/90 p-6 animate-enter">
+                                <div className={`bg-slate-900 w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl border ${pairResult.type === 'success' ? 'border-emerald-500/50' : 'border-rose-500/50'}`}>
+                                    <div className={`p-8 text-center border-b ${pairResult.type === 'success' ? 'border-emerald-500/20' : 'border-rose-500/20'}`}>
+                                        <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 border-4 ${pairResult.type === 'success' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-rose-500/20 border-rose-500 text-rose-400'}`}>
+                                            <i className={`ph-fill text-4xl ${pairResult.type === 'success' ? 'ph-link' : 'ph-x'}`}></i>
+                                        </div>
+                                        <h3 className={`text-2xl font-black ${pairResult.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>{pairResult.title}</h3>
+                                        <p className="text-[11px] font-bold mt-2 text-slate-300 uppercase tracking-widest">{pairResult.message}</p>
+                                    </div>
+                                    <div className="p-6 bg-slate-900/50">
+                                        <button onClick={handleNextAction} className={`w-full py-4 text-white font-black tracking-widest uppercase text-[11px] rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 ${pairResult.type === 'success' ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-rose-500 hover:bg-rose-400'}`}>
+                                            <i className={`ph-bold ${pairResult.type === 'success' ? 'ph-check' : 'ph-arrow-counter-clockwise'}`}></i>
+                                            {pairResult.type === 'success' ? 'Finish' : 'Try Again'}
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest">Category</label>
-                                <select value={walkinData.category} onChange={(e) => setWalkinData({...walkinData, category: e.target.value})} className="w-full bg-slate-800 border border-white/5 rounded-2xl py-4 px-5 text-white font-bold focus:border-teal-400 focus:outline-none">
-                                    <option value="Participant">Participant</option>
-                                    <option value="Volunteer">Volunteer</option>
-                                    <option value="Guest">Guest</option>
-                                </select>
-                            </div>
-                            <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => setIsWalkinOpen(false)} className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-2xl">Cancel</button>
-                                <button disabled={isSubmitting} className="flex-1 py-4 bg-teal-500 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-lg shadow-teal-500/20">
-                                    {isSubmitting ? 'Adding...' : 'Add & Close'}
-                                </button>
-                            </div>
-                        </form>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* ✏️ EDIT MODAL (NEW) */}
-            {isEditOpen && (
-                <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-6">
-                    <div className="bg-slate-900 w-full max-w-sm rounded-[2.5rem] border border-white/10 p-8 shadow-2xl animate-enter">
+            {/* 🚶 WALK-IN & ✏️ EDIT MODALS */}
+            {(isWalkinOpen || isEditOpen) && (
+                <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-6 overflow-y-auto">
+                    <div className="my-auto bg-slate-900 w-full max-w-sm rounded-[2.5rem] border border-white/10 p-8 shadow-2xl animate-enter">
                         <h3 className="text-2xl font-black text-white mb-6 flex items-center gap-3">
-                            <i className="ph-fill ph-pencil-line text-blue-400"></i>
-                            Edit Record
+                            <i className={`ph-fill ${isWalkinOpen ? 'ph-user-plus text-teal-400' : 'ph-pencil-line text-blue-400'}`}></i>
+                            {isWalkinOpen ? 'Walk-in Entry' : 'Edit Record'}
                         </h3>
-                        <form onSubmit={handleEditSubmit} className="space-y-4">
+                        <form onSubmit={isWalkinOpen ? handleWalkin : handleEditSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest">Full Name</label>
-                                <input required value={editData.name} onChange={(e) => setEditData({...editData, name: e.target.value})} className="w-full bg-slate-800 border border-white/5 rounded-2xl py-4 px-5 text-white font-bold focus:border-blue-400 focus:outline-none" />
+                                <input required value={isWalkinOpen ? walkinData.name : editData.name} onChange={(e) => isWalkinOpen ? setWalkinData({...walkinData, name: e.target.value}) : setEditData({...editData, name: e.target.value})} className="w-full bg-slate-800 border border-white/5 rounded-2xl py-4 px-5 text-white font-bold focus:border-teal-400 focus:outline-none" placeholder={isWalkinOpen ? "e.g. Jagannath Das" : ""} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest">Category</label>
-                                <select value={editData.category} onChange={(e) => setEditData({...editData, category: e.target.value})} className="w-full bg-slate-800 border border-white/5 rounded-2xl py-4 px-5 text-white font-bold focus:border-blue-400 focus:outline-none">
+                                <select value={isWalkinOpen ? walkinData.category : editData.category} onChange={(e) => isWalkinOpen ? setWalkinData({...walkinData, category: e.target.value}) : setEditData({...editData, category: e.target.value})} className="w-full bg-slate-800 border border-white/5 rounded-2xl py-4 px-5 text-white font-bold focus:border-teal-400 focus:outline-none">
                                     <option value="Participant">Participant</option>
                                     <option value="Volunteer">Volunteer</option>
                                     <option value="Guest">Guest</option>
                                 </select>
                             </div>
                             <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-2xl">Cancel</button>
-                                <button disabled={isSubmitting} className="flex-1 py-4 bg-blue-500 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-lg shadow-blue-500/20">
-                                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                                <button type="button" onClick={() => {setIsWalkinOpen(false); setIsEditOpen(false);}} className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-2xl hover:bg-white/10">Cancel</button>
+                                <button disabled={isSubmitting} className={`flex-1 py-4 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-lg active:scale-95 transition-all ${isWalkinOpen ? 'bg-teal-500 shadow-teal-500/20 hover:bg-teal-400' : 'bg-blue-500 shadow-blue-500/20 hover:bg-blue-400'}`}>
+                                    {isSubmitting ? 'Processing...' : (isWalkinOpen ? 'Add & Close' : 'Save Changes')}
                                 </button>
                             </div>
                         </form>

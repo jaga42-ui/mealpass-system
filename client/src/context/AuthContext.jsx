@@ -5,7 +5,8 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    // 👇 FIX: Renamed from isLoading to loading to match App.jsx
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const checkLoggedIn = () => {
@@ -15,7 +16,7 @@ export const AuthProvider = ({ children }) => {
             if (storedUser && token) {
                 setUser(JSON.parse(storedUser));
             }
-            setIsLoading(false);
+            setLoading(false);
         };
         checkLoggedIn();
     }, []);
@@ -40,7 +41,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+        // 👇 FIX: Exporting 'loading' instead of 'isLoading'
+        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );

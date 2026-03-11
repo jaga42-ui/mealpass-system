@@ -33,7 +33,7 @@ const Scanner = () => {
             scannerRef.current = new Html5Qrcode("reader");
             await scannerRef.current.start(
                 { facingMode: "environment" },
-                { fps: 15 }, 
+                { fps: 15 }, // Edge-to-edge scanning
                 onScanSuccess,
                 onScanFailure
             );
@@ -118,12 +118,15 @@ const Scanner = () => {
             {/* 🎨 INLINE CSS FOR THE LASER ANIMATION */}
             <style>{`
                 @keyframes laserSweep {
-                    0% { top: 10%; box-shadow: 0 0 20px 2px rgba(45, 212, 191, 0.2); }
-                    50% { box-shadow: 0 0 25px 4px rgba(45, 212, 191, 0.6); }
-                    100% { top: 90%; box-shadow: 0 0 20px 2px rgba(45, 212, 191, 0.2); }
+                    0% { top: 10%; opacity: 0.2; }
+                    50% { opacity: 1; }
+                    100% { top: 90%; opacity: 0.2; }
                 }
                 .scanner-laser {
                     animation: laserSweep 2.5s ease-in-out infinite alternate;
+                    background: linear-gradient(to right, transparent, #2dd4bf, transparent);
+                    height: 2px;
+                    box-shadow: 0 0 15px #2dd4bf;
                 }
             `}</style>
 
@@ -144,8 +147,8 @@ const Scanner = () => {
                 </div>
             </div>
 
-            {/* Camera Viewport */}
-            <div className="relative w-full aspect-[3/4] bg-slate-950 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 ring-1 ring-white/5">
+            {/* 📸 COMPACT SQUARE CAMERA VIEWPORT */}
+            <div className="relative w-[85%] max-w-[320px] mx-auto aspect-square bg-slate-950 rounded-[2rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 ring-1 ring-white/5 mt-8">
                 
                 {/* The Video Feed */}
                 <div id="reader" className="w-full h-full object-cover"></div>
@@ -153,13 +156,13 @@ const Scanner = () => {
                 {/* 🔴 THE LASER SCANNER EFFECT */}
                 {isScanning && (
                     <>
-                        <div className="absolute left-8 right-8 h-[2px] bg-teal-400 rounded-full scanner-laser z-20"></div>
+                        <div className="absolute left-6 right-6 scanner-laser z-20 pointer-events-none"></div>
                         
-                        {/* Elegant Corner Reticles */}
-                        <div className="absolute top-8 left-8 w-12 h-12 border-t border-l border-white/30 rounded-tl-3xl z-10 pointer-events-none"></div>
-                        <div className="absolute top-8 right-8 w-12 h-12 border-t border-r border-white/30 rounded-tr-3xl z-10 pointer-events-none"></div>
-                        <div className="absolute bottom-8 left-8 w-12 h-12 border-b border-l border-white/30 rounded-bl-3xl z-10 pointer-events-none"></div>
-                        <div className="absolute bottom-8 right-8 w-12 h-12 border-b border-r border-white/30 rounded-br-3xl z-10 pointer-events-none"></div>
+                        {/* Elegant Corner Reticles (Tighter for square box) */}
+                        <div className="absolute top-6 left-6 w-10 h-10 border-t-2 border-l-2 border-white/30 rounded-tl-2xl z-10 pointer-events-none transition-all duration-300"></div>
+                        <div className="absolute top-6 right-6 w-10 h-10 border-t-2 border-r-2 border-white/30 rounded-tr-2xl z-10 pointer-events-none transition-all duration-300"></div>
+                        <div className="absolute bottom-6 left-6 w-10 h-10 border-b-2 border-l-2 border-white/30 rounded-bl-2xl z-10 pointer-events-none transition-all duration-300"></div>
+                        <div className="absolute bottom-6 right-6 w-10 h-10 border-b-2 border-r-2 border-white/30 rounded-br-2xl z-10 pointer-events-none transition-all duration-300"></div>
                     </>
                 )}
                 
@@ -170,29 +173,29 @@ const Scanner = () => {
                             onClick={startScanner} 
                             className="group flex flex-col items-center outline-none"
                         >
-                            <div className="w-24 h-24 bg-white/5 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/10 transition-all duration-500 group-hover:scale-105 group-hover:bg-white/10 group-active:scale-95 shadow-[0_0_40px_rgba(0,0,0,0.3)]">
-                                <i className="ph-light ph-camera text-4xl text-teal-400/80 group-hover:text-teal-300 transition-colors"></i>
+                            <div className="w-20 h-20 bg-white/5 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/10 transition-all duration-500 group-hover:scale-105 group-hover:bg-white/10 active:scale-95 shadow-[0_0_40px_rgba(0,0,0,0.3)]">
+                                <i className="ph-light ph-camera text-3xl text-teal-400/80 group-hover:text-teal-300 transition-colors"></i>
                             </div>
-                            <span className="mt-6 text-[11px] font-semibold tracking-[0.25em] text-slate-300 uppercase transition-colors group-hover:text-white">
+                            <span className="mt-5 text-[10px] font-semibold tracking-[0.25em] text-slate-300 uppercase transition-colors group-hover:text-white">
                                 Activate Lens
                             </span>
                         </button>
                     </div>
                 )}
-
-                {/* Refined Stop Button */}
-                {isScanning && (
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
-                        <button 
-                            onClick={stopScanner} 
-                            className="bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white/90 px-8 py-4 rounded-full text-[10px] font-semibold tracking-widest uppercase flex items-center gap-3 hover:bg-rose-500/90 hover:border-rose-500 hover:text-white active:scale-95 transition-all shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
-                        >
-                            <div className="w-1.5 h-1.5 bg-rose-400 rounded-full"></div>
-                            Close Lens
-                        </button>
-                    </div>
-                )}
             </div>
+
+            {/* Refined Stop Button (Moved OUTSIDE the camera box so it doesn't block the view) */}
+            {isScanning && (
+                <div className="flex justify-center mt-6">
+                    <button 
+                        onClick={stopScanner} 
+                        className="bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white/90 px-8 py-4 rounded-full text-[10px] font-semibold tracking-widest uppercase flex items-center gap-3 hover:bg-rose-500/90 hover:border-rose-500 hover:text-white active:scale-95 transition-all shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+                    >
+                        <div className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-pulse"></div>
+                        Close Lens
+                    </button>
+                </div>
+            )}
 
             {/* 💎 Elegant Result Modal */}
             {scanResult && (

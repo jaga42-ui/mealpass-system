@@ -43,11 +43,12 @@ const ResetPassword = () => {
     };
 
     return (
-        <div className="fixed inset-0 w-full h-full bg-gradient-to-br from-teal-950 via-teal-900 to-slate-900 flex items-center justify-center p-6 font-sans overflow-hidden">
+        // 👇 Scroll-lock removed! Replaced with min-h-screen and overflow-y-auto 👇
+        <div className="min-h-screen w-full bg-gradient-to-br from-teal-950 via-teal-900 to-slate-900 flex items-center justify-center p-6 py-12 font-sans relative overflow-x-hidden overflow-y-auto">
             
             {/* Cinematic Background Glows */}
-            <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-teal-500/20 rounded-full blur-[100px]"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-slate-900/80 rounded-full blur-[100px]"></div>
+            <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-teal-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-slate-900/80 rounded-full blur-[100px] pointer-events-none"></div>
 
             <div className="w-full max-w-sm animate-enter relative z-10">
                 

@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import api from '../api/axios';
 
 const BadgeGenerator = () => {
-    const [count, setCount] = useState(10); // Default to a reasonable number
+    const [count, setCount] = useState(10); 
     const [badges, setBadges] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -23,7 +23,7 @@ const BadgeGenerator = () => {
     };
 
     return (
-        <div className="w-full">
+        <div className="w-full max-w-4xl mx-auto relative z-20">
             {/* --- CONTROL PANEL (Hidden entirely during actual printing) --- */}
             <div className="print:hidden bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-xl mb-6">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -38,7 +38,7 @@ const BadgeGenerator = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 w-full md:w-auto bg-slate-900/50 p-2 rounded-2xl border border-white/5">
+                    <div className="flex items-center gap-3 w-full md:w-auto bg-slate-900/50 p-2 rounded-2xl border border-white/5 shadow-inner">
                         <input 
                             type="number" 
                             min="1" 
@@ -58,9 +58,9 @@ const BadgeGenerator = () => {
                 </div>
             </div>
 
-            {/* --- CLEAN SUCCESS UI (Replaces the ugly grid on dark mode) --- */}
+            {/* --- CLEAN SUCCESS UI --- */}
             {badges.length > 0 && !loading && (
-                <div className="print:hidden bg-emerald-500/10 border border-emerald-500/30 p-8 rounded-[2rem] text-center shadow-[0_10px_30px_rgba(16,185,129,0.1)] mt-8">
+                <div className="print:hidden bg-emerald-500/10 border border-emerald-500/30 p-8 rounded-[2rem] text-center shadow-[0_10px_30px_rgba(16,185,129,0.1)] mt-8 animate-enter">
                     <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/50 shadow-inner">
                         <i className="ph-fill ph-check-circle text-5xl text-emerald-400"></i>
                     </div>
@@ -78,32 +78,32 @@ const BadgeGenerator = () => {
             )}
 
             {badges.length === 0 && !loading && (
-                <div className="text-center py-20 border-2 border-dashed border-white/10 rounded-[2rem] print:hidden">
-                    <i className="ph-duotone ph-qr-code text-4xl text-slate-600 mb-3"></i>
+                <div className="text-center py-20 border-2 border-dashed border-white/10 rounded-[2rem] print:hidden shadow-inner bg-slate-900/30">
+                    <i className="ph-duotone ph-qr-code text-4xl text-slate-600 mb-3 opacity-50"></i>
                     <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Awaiting Generation Command</p>
                 </div>
             )}
 
             {/* --- THE ACTUAL PRINTABLE GRID --- */}
-            {/* The 'hidden' class removes it from the screen entirely. 
-                The 'print:grid' and 'print:absolute' classes take over the whole browser ONLY when printing. */}
-            <div className="hidden print:grid print:grid-cols-4 print:gap-4 print:bg-white print:text-black print:absolute print:top-0 print:left-0 print:w-full print:z-[9999] print:p-8">
+            {/* The 'hidden' class removes it from the screen entirely during normal browsing. 
+                The 'print:grid', 'print:fixed', and 'print:z-[9999]' classes force it to cover the entire page when printing! */}
+            <div className="hidden print:grid print:grid-cols-4 print:gap-4 print:bg-white print:text-black print:fixed print:top-0 print:left-0 print:w-full print:h-full print:z-[9999] print:p-8 print:overflow-visible">
                 {badges.map((badgeString, index) => (
                     <div 
                         key={index} 
-                        className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-xl print:break-inside-avoid"
+                        className="flex flex-col items-center justify-center p-3 border-2 border-gray-200 rounded-xl print:break-inside-avoid shadow-sm"
                     >
-                        <div className="mb-2">
+                        <div className="mb-2 p-2 bg-white rounded-lg">
                             <QRCodeSVG 
                                 value={badgeString} 
-                                size={100} 
+                                size={120} 
                                 level="H" 
                             />
                         </div>
-                        <p className="font-bold font-mono text-[10px] tracking-widest text-black">
+                        <p className="font-bold font-mono text-[12px] tracking-widest text-black">
                             {badgeString.split('-')[0]} 
                         </p>
-                        <p className="text-[6px] uppercase font-black mt-1 text-gray-400">
+                        <p className="text-[7px] uppercase font-black mt-1 text-gray-500 tracking-[0.2em]">
                             AccessPro Secure
                         </p>
                     </div>

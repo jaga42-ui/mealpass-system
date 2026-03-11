@@ -4,7 +4,8 @@ const Landing = () => {
     const navigate = useNavigate();
 
     return (
-        <div className="fixed inset-0 w-full h-full bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 flex flex-col items-center justify-center p-6 font-sans overflow-hidden">
+        // 👇 The scroll-lock has been removed here! 👇
+        <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950 flex flex-col items-center justify-center p-6 py-12 font-sans relative overflow-x-hidden overflow-y-auto">
             
             {/* Cinematic Background Glows */}
             <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-teal-500/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
