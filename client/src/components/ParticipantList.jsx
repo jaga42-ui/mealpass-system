@@ -30,7 +30,12 @@ const ParticipantList = () => {
         setLoading(true);
         try {
             const response = await api.get('/participants');
-            setParticipants(response.data);
+            
+            // 🚀 FIX: Sort the data so newest additions are ALWAYS at the top!
+            // MongoDB _id's contain timestamps, so sorting by _id descending works perfectly.
+            const sortedData = response.data.sort((a, b) => (a._id < b._id ? 1 : -1));
+            
+            setParticipants(sortedData);
             setError('');
         } catch (err) {
             setError('Failed to load participants.');
@@ -115,17 +120,45 @@ const ParticipantList = () => {
         }
     };
 
-    // --- 🚶 WALKIN LOGIC ---
-    const handleWalkin = async (e) => {
-        e.preventDefault();
+    // --- 🚶 WALKIN LOGIC (UPGRADED WITH INSTANT LINK) ---
+    const handleWalkinAction = async (action = 'link') => {
+        if (!walkinData.name.trim()) return;
+        
         setIsSubmitting(true);
         try {
+            // Save walkin
             await api.post('/admin/bulk-upload', [walkinData]);
+            
+            // Fetch updated list
+            const freshRes = await api.get('/participants');
+            
+            // 🚀 FIX: Sort new list so the person we just added is at the very top index [0]
+            const sortedList = freshRes.data.sort((a, b) => (a._id < b._id ? 1 : -1));
+            setParticipants(sortedList);
+            
+            // 🚀 FIX: Clear the search bar so the new person isn't accidentally hidden!
+            setSearchTerm('');
+            setActiveFilter('All');
+            
+            // Close the modal
             setIsWalkinOpen(false);
+            
+            if (action === 'link') {
+                // The new user is now guaranteed to be near the top of the array
+                const newUser = sortedList.find(p => p.name === walkinData.name.trim() && !p.qrId);
+                
+                if (newUser) {
+                    setTimeout(() => openPairingModal(newUser), 300);
+                } else {
+                    alert("User added! Please click 'Link' from the roster list.");
+                }
+            }
+            
+            // Reset state
             setWalkinData({ name: '', category: 'Participant' });
-            fetchParticipants();
         } catch (err) {
             alert("Failed to register walk-in.");
+            console.error(err);
         } finally {
             setIsSubmitting(false);
         }
@@ -145,7 +178,6 @@ const ParticipantList = () => {
     const handleUnlink = async (id) => {
         if (!window.confirm("Unlink this physical badge? They will not be able to scan until a new one is linked.")) return;
         try {
-            // Unlinking is just updating the user's qrId to null
             await api.put(`/admin/participants/${id}`, { qrId: null });
             fetchParticipants();
         } catch (err) {
@@ -203,7 +235,6 @@ const ParticipantList = () => {
     return (
         <div className="flex flex-col h-full animate-enter w-full max-w-md mx-auto pb-20 relative z-20">
             
-            {/* 👇 FIX: Changed top-0 to top-16 so it docks under the new global Navbar! */}
             <div className="sticky top-16 z-30 pt-4 pb-4 bg-slate-950/90 backdrop-blur-xl border-b border-white/10 mx-[-1rem] px-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
                 <div className="flex items-center justify-between mb-5">
                     <h3 className="font-black text-white text-lg flex items-center gap-3 tracking-wide">
@@ -393,7 +424,11 @@ const ParticipantList = () => {
                             <i className={`ph-fill ${isWalkinOpen ? 'ph-user-plus text-teal-400' : 'ph-pencil-line text-blue-400'}`}></i>
                             {isWalkinOpen ? 'Walk-in Entry' : 'Edit Record'}
                         </h3>
-                        <form onSubmit={isWalkinOpen ? handleWalkin : handleEditSubmit} className="space-y-4">
+                        <form onSubmit={(e) => { 
+                            e.preventDefault(); 
+                            if (isWalkinOpen) handleWalkinAction('link'); 
+                            else handleEditSubmit(e); 
+                        }} className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase text-slate-500 ml-2 tracking-widest">Full Name</label>
                                 <input required value={isWalkinOpen ? walkinData.name : editData.name} onChange={(e) => isWalkinOpen ? setWalkinData({...walkinData, name: e.target.value}) : setEditData({...editData, name: e.target.value})} className="w-full bg-slate-800 border border-white/5 rounded-2xl py-4 px-5 text-white font-bold focus:border-teal-400 focus:outline-none" placeholder={isWalkinOpen ? "e.g. Jagannath Das" : ""} />
@@ -406,12 +441,45 @@ const ParticipantList = () => {
                                     <option value="Guest">Guest</option>
                                 </select>
                             </div>
-                            <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => {setIsWalkinOpen(false); setIsEditOpen(false);}} className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-2xl hover:bg-white/10">Cancel</button>
-                                <button disabled={isSubmitting} className={`flex-1 py-4 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-lg active:scale-95 transition-all ${isWalkinOpen ? 'bg-teal-500 shadow-teal-500/20 hover:bg-teal-400' : 'bg-blue-500 shadow-blue-500/20 hover:bg-blue-400'}`}>
-                                    {isSubmitting ? 'Processing...' : (isWalkinOpen ? 'Add & Close' : 'Save Changes')}
-                                </button>
-                            </div>
+                            
+                            {/* DYNAMIC BUTTONS FOR WALKIN VS EDIT */}
+                            {isWalkinOpen ? (
+                                <div className="flex flex-col gap-3 pt-4">
+                                    <button 
+                                        type="submit" 
+                                        disabled={isSubmitting || !walkinData.name} 
+                                        className="w-full py-4 bg-teal-500 hover:bg-teal-400 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-[0_0_20px_rgba(20,184,166,0.3)] active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <i className="ph-bold ph-qr-code text-lg"></i>
+                                        {isSubmitting ? 'Processing...' : 'Add & Link Badge Now'}
+                                    </button>
+                                    
+                                    <div className="flex gap-3">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {setIsWalkinOpen(false); setWalkinData({ name: '', category: 'Participant' });}} 
+                                            className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-2xl hover:bg-white/10 transition-all"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={() => handleWalkinAction('close')} 
+                                            disabled={isSubmitting || !walkinData.name} 
+                                            className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-teal-400 border border-teal-500/30 font-black uppercase text-[10px] tracking-widest rounded-2xl active:scale-95 transition-all"
+                                        >
+                                            Add & Close
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex gap-3 pt-4">
+                                    <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-2xl hover:bg-white/10 transition-all">Cancel</button>
+                                    <button type="submit" disabled={isSubmitting} className="flex-1 py-4 bg-blue-500 hover:bg-blue-400 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-lg active:scale-95 transition-all">
+                                        {isSubmitting ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                </div>
+                            )}
                         </form>
                     </div>
                 </div>

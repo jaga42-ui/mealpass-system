@@ -8,32 +8,43 @@ exports.addParticipant = async (req, res) => {
     try {
         const { qrId, name, category, department, photoUrl } = req.body;
 
-        if (!qrId || !name || !category) {
-            return res.status(400).json({ message: 'Please provide qrId, name, and category.' });
+        // 🚀 THE FIX: Removed qrId from the mandatory requirements!
+        if (!name || !category) {
+            return res.status(400).json({ message: 'Please provide name and category.' });
         }
 
-        const existingParticipant = await Participant.findOne({ qrId });
-        if (existingParticipant) {
-            return res.status(400).json({ message: 'Participant with this ID already exists.' });
+        // 🚀 THE FIX: Only check for an existing qrId IF they actually provided one
+        if (qrId && qrId.trim() !== '') {
+            const existingParticipant = await Participant.findOne({ qrId: qrId.toUpperCase() });
+            if (existingParticipant) {
+                return res.status(400).json({ message: 'Participant with this ID already exists.' });
+            }
         }
 
-        // 3. GENERATE THE VAULT KEY WITH SPEAKEASY
+        // GENERATE THE VAULT KEY WITH SPEAKEASY (Kept for your Participant Web Portal)
         const secret = speakeasy.generateSecret({ length: 20 });
         const secretKey = secret.base32;
 
-        const participant = await Participant.create({
-            qrId,
+        const participantData = {
             name,
             category,
             department: department || 'N/A',
             photoUrl: photoUrl || '',
             totpSecret: secretKey 
-        });
+        };
+
+        // 🚀 THE FIX: Only attach qrId to the object if it exists. 
+        // This keeps MongoDB's sparse index happy so you don't get duplicate 'null' errors.
+        if (qrId && qrId.trim() !== '') {
+            participantData.qrId = qrId.toUpperCase();
+        }
+
+        const participant = await Participant.create(participantData);
 
         res.status(201).json({
             message: 'Participant added successfully.',
             participant: {
-                qrId: participant.qrId,
+                qrId: participant.qrId || null,
                 name: participant.name,
                 secret: participant.totpSecret 
             }
@@ -47,13 +58,17 @@ exports.addParticipant = async (req, res) => {
 
 exports.getParticipants = async (req, res) => {
     try {
-        const participants = await Participant.find({ isActive: true }).select('-totpSecret');
+        // 🚀 OPTIMIZATION: Added .sort({ _id: -1 }) to natively send the newest users first
+        const participants = await Participant.find({ isActive: true })
+                                            .sort({ _id: -1 })
+                                            .select('-totpSecret');
         res.status(200).json(participants);
     } catch (error) {
         console.error('Error fetching participants:', error);
         res.status(500).json({ message: 'Server error fetching participants.' });
     }
 };
+
 // @desc    Participant Login (Fetches their secret key for the web portal)
 // @route   POST /api/participants/login
 // @access  Public

@@ -48,13 +48,22 @@ exports.bulkUploadParticipants = async (req, res) => {
             return res.status(400).json({ message: 'No data provided.' });
         }
 
-        const formattedData = participants.map(p => ({
-            qrId: p.qrId ? p.qrId.toUpperCase() : null, 
-            name: p.name,
-            category: p.category || 'Participant',
-            department: p.department || 'N/A',
-            totpSecret: speakeasy.generateSecret({ length: 20 }).base32 
-        }));
+        const formattedData = participants.map(p => {
+            // 🚀 HYBRID FIX: We generate the digital secret now, so the Web Portal works later!
+            const newParticipant = {
+                name: p.name,
+                category: p.category || 'Participant',
+                department: p.department || 'N/A',
+                totpSecret: speakeasy.generateSecret({ length: 20 }).base32 
+            };
+
+            // Only attach the qrId if it exists to prevent "null" Duplicate Key errors
+            if (p.qrId && p.qrId.trim() !== '') {
+                newParticipant.qrId = p.qrId.toUpperCase();
+            }
+
+            return newParticipant;
+        });
 
         const result = await Participant.insertMany(formattedData, { ordered: false });
         
