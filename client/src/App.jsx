@@ -7,7 +7,8 @@ import Navbar from './components/Navbar';
 import Landing from './pages/Landing'; 
 import Login from './pages/Login';
 import ParticipantLogin from './pages/ParticipantLogin'; 
-import Portal from './pages/Portal'; // 🚀 <-- Added the Portal import!
+import Portal from './pages/Portal'; 
+import ResetPassword from './pages/ResetPassword'; // 🚀 Added missing import
 import Scanner from './components/Scanner';
 import ParticipantList from './components/ParticipantList';
 import CommandCenter from './components/CommandCenter';
@@ -16,9 +17,10 @@ import BadgeGenerator from './components/BadgeGenerator';
 
 // 🛡️ Custom Router Guard
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
-    const { user, isLoading } = useContext(AuthContext);
+    // 👇 Make sure 'loading' matches what AuthContext exports!
+    const { user, loading } = useContext(AuthContext);
 
-    if (isLoading) {
+    if (loading) {
         return <div className="h-screen flex items-center justify-center bg-slate-950 text-teal-400 font-black animate-pulse tracking-widest uppercase text-xs">Authenticating...</div>;
     }
 
@@ -34,26 +36,26 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 };
 
 function App() {
-    const { user, isLoading } = useContext(AuthContext);
+    // 👇 Make sure 'loading' matches what AuthContext exports!
+    const { user, loading } = useContext(AuthContext);
 
-    if (isLoading) return null;
+    if (loading) return null;
 
     return (
         <Router>
-            <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-teal-500/30">
+            <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-teal-500/30 overflow-x-hidden">
                 {/* Only show Navbar if logged in */}
                 {user && <Navbar />}
                 
-                <main className="p-4 md:p-8 pt-20 pb-28 max-w-7xl mx-auto">
+                {/* 👇 Added pt-20 and pb-28 here to prevent content from hiding under Navbars */}
+                <main className="p-4 md:p-8 pt-20 pb-28 max-w-7xl mx-auto w-full relative z-10">
                     <Routes>
                         {/* 🌍 PUBLIC ROUTES */}
-                        {/* If they are already logged in, skip the landing page and go straight to work */}
                         <Route path="/" element={!user ? <Landing /> : <Navigate to="/scan" />} />
                         <Route path="/login" element={!user ? <Login /> : <Navigate to="/scan" />} />
                         <Route path="/pass" element={<ParticipantLogin />} />
-                        
-                        {/* 🚀 <-- Added the Portal Route here! */}
                         <Route path="/portal" element={<Portal />} /> 
+                        <Route path="/resetpassword/:token" element={<ResetPassword />} />
 
                         {/* 🛡️ UNIVERSAL PROTECTED ROUTE (Both Volunteers & Admins) */}
                         <Route 
