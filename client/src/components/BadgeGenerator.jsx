@@ -25,7 +25,7 @@ const BadgeGenerator = () => {
     return (
         <div className="w-full max-w-4xl mx-auto relative z-20">
             
-            {/* 🚀 THE FIX: Force strict page margins and normal document flow */}
+            {/* 🚀 THE FIX: Strict print rules to protect the page margins and hide your Navbar */}
             <style>{`
                 @media print {
                     body, html, #root {
@@ -34,8 +34,12 @@ const BadgeGenerator = () => {
                         overflow: visible !important;
                         background-color: white !important;
                     }
+                    /* This attempts to hide your ACCESSPRO header so it doesn't crowd the QR codes */
+                    header, nav, .sidebar {
+                        display: none !important;
+                    }
                     @page {
-                        margin: 15mm; /* Safe margin so the printer rollers don't clip the top! */
+                        margin: 20mm; /* A solid 20mm margin prevents printer rollers from slicing the top */
                     }
                 }
             `}</style>
@@ -100,22 +104,18 @@ const BadgeGenerator = () => {
                 </div>
             )}
 
-            {/* --- THE ACTUAL PRINTABLE GRID (BULLETPROOF FIX) --- */}
-            {/* 🚀 Changed to print:block so we can use inline-block elements. */}
-            <div className="hidden print:block print:w-full print:bg-white print:text-center">
+            {/* --- THE ACTUAL PRINTABLE GRID --- */}
+            <div className="hidden print:block print:w-full print:bg-white text-center">
                 {badges.map((badgeString, index) => (
                     <div 
                         key={index} 
-                        // 🚀 Inline-block with fixed percentages acts like a grid, but respects page breaks flawlessly!
-                        className="print:inline-block print:w-[22%] print:m-[1.5%] p-4 border border-gray-300 rounded-xl bg-white"
-                        // 🚀 Explicit inline styles to forcefully prevent the printer from slicing the box
+                        // 🚀 THE FIX: inline-flex perfectly centers the SVG vertically and align-top stops row jitter
+                        className="print:inline-flex print:items-center print:justify-center print:w-[20%] print:m-[2%] p-4 border-2 border-slate-300 rounded-2xl bg-white align-top"
                         style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }} 
                     >
                         <QRCodeSVG 
                             value={badgeString} 
-                            size={120} // Slightly scaled to ensure 4 fit perfectly per row
-                            level="H" 
-                            className="mx-auto"
+                            size={120} 
                         />
                     </div>
                 ))}
