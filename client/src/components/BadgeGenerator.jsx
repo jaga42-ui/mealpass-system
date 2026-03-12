@@ -24,6 +24,22 @@ const BadgeGenerator = () => {
 
     return (
         <div className="w-full max-w-4xl mx-auto relative z-20">
+            
+            {/* 🚀 THE FIX: Global print override to ensure infinite scrolling pages! */}
+            <style>{`
+                @media print {
+                    body, html, #root {
+                        height: auto !important;
+                        min-height: auto !important;
+                        overflow: visible !important;
+                        background-color: white !important;
+                    }
+                    @page {
+                        margin: 0.5in;
+                    }
+                }
+            `}</style>
+
             {/* --- CONTROL PANEL (Hidden entirely during actual printing) --- */}
             <div className="print:hidden bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-xl mb-6">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -85,27 +101,19 @@ const BadgeGenerator = () => {
             )}
 
             {/* --- THE ACTUAL PRINTABLE GRID --- */}
-            {/* The 'hidden' class removes it from the screen entirely during normal browsing. 
-                The 'print:grid', 'print:fixed', and 'print:z-[9999]' classes force it to cover the entire page when printing! */}
-            <div className="hidden print:grid print:grid-cols-4 print:gap-4 print:bg-white print:text-black print:fixed print:top-0 print:left-0 print:w-full print:h-full print:z-[9999] print:p-8 print:overflow-visible">
+            {/* 🚀 THE FIX: Removed fixed heights and top-0 attributes so the grid naturally spans multiple pages. */}
+            <div className="hidden print:grid print:grid-cols-4 print:gap-6 print:w-full print:bg-white">
                 {badges.map((badgeString, index) => (
                     <div 
                         key={index} 
-                        className="flex flex-col items-center justify-center p-3 border-2 border-gray-200 rounded-xl print:break-inside-avoid shadow-sm"
+                        className="flex items-center justify-center p-4 border border-gray-300 rounded-xl print:break-inside-avoid"
                     >
-                        <div className="mb-2 p-2 bg-white rounded-lg">
-                            <QRCodeSVG 
-                                value={badgeString} 
-                                size={120} 
-                                level="H" 
-                            />
-                        </div>
-                        <p className="font-bold font-mono text-[12px] tracking-widest text-black">
-                            {badgeString.split('-')[0]} 
-                        </p>
-                        <p className="text-[7px] uppercase font-black mt-1 text-gray-500 tracking-[0.2em]">
-                            AccessPro Secure
-                        </p>
+                        {/* 🚀 THE FIX: Removed all the <p> text tags! Just the raw QR code now. */}
+                        <QRCodeSVG 
+                            value={badgeString} 
+                            size={150} 
+                            level="H" 
+                        />
                     </div>
                 ))}
             </div>
