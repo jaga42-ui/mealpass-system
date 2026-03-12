@@ -25,7 +25,7 @@ const BadgeGenerator = () => {
     return (
         <div className="w-full max-w-4xl mx-auto relative z-20">
             
-            {/* 🚀 THE FIX: Global print override to ensure infinite scrolling pages! */}
+            {/* 🚀 THE FIX: Force strict page margins and normal document flow */}
             <style>{`
                 @media print {
                     body, html, #root {
@@ -35,7 +35,7 @@ const BadgeGenerator = () => {
                         background-color: white !important;
                     }
                     @page {
-                        margin: 0.5in;
+                        margin: 15mm; /* Safe margin so the printer rollers don't clip the top! */
                     }
                 }
             `}</style>
@@ -100,19 +100,22 @@ const BadgeGenerator = () => {
                 </div>
             )}
 
-            {/* --- THE ACTUAL PRINTABLE GRID --- */}
-            {/* 🚀 THE FIX: Removed fixed heights and top-0 attributes so the grid naturally spans multiple pages. */}
-            <div className="hidden print:grid print:grid-cols-4 print:gap-6 print:w-full print:bg-white">
+            {/* --- THE ACTUAL PRINTABLE GRID (BULLETPROOF FIX) --- */}
+            {/* 🚀 Changed to print:block so we can use inline-block elements. */}
+            <div className="hidden print:block print:w-full print:bg-white print:text-center">
                 {badges.map((badgeString, index) => (
                     <div 
                         key={index} 
-                        className="flex items-center justify-center p-4 border border-gray-300 rounded-xl print:break-inside-avoid"
+                        // 🚀 Inline-block with fixed percentages acts like a grid, but respects page breaks flawlessly!
+                        className="print:inline-block print:w-[22%] print:m-[1.5%] p-4 border border-gray-300 rounded-xl bg-white"
+                        // 🚀 Explicit inline styles to forcefully prevent the printer from slicing the box
+                        style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }} 
                     >
-                        {/* 🚀 THE FIX: Removed all the <p> text tags! Just the raw QR code now. */}
                         <QRCodeSVG 
                             value={badgeString} 
-                            size={150} 
+                            size={120} // Slightly scaled to ensure 4 fit perfectly per row
                             level="H" 
+                            className="mx-auto"
                         />
                     </div>
                 ))}
