@@ -199,19 +199,19 @@ const Scanner = () => {
 
             {/* 💎 Elegant Result Modal */}
             {scanResult && (
-                <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-slate-950/40 backdrop-blur-lg pb-6 px-4 animate-enter">
+                <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-slate-950/40 backdrop-blur-lg pb-6 px-4 animate-enter overflow-y-auto">
                     <div className="w-full h-full absolute inset-0 cursor-pointer" onClick={closeResult}></div>
                     
-                    <div className="relative w-full max-w-md mx-auto bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden p-8 flex flex-col items-center">
+                    <div className="relative w-full max-w-md mx-auto bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden p-8 flex flex-col items-center my-auto max-h-[90vh] overflow-y-auto no-scrollbar">
                         
                         {/* Soft Glow Behind Icon */}
                         <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-48 h-32 blur-[60px] pointer-events-none rounded-full ${scanResult.type === 'success' ? 'bg-teal-500/20' : 'bg-rose-500/20'}`}></div>
 
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 border relative z-10 shadow-inner ${scanResult.type === 'success' ? 'bg-teal-500/10 border-teal-500/20 text-teal-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 border relative z-10 shadow-inner shrink-0 ${scanResult.type === 'success' ? 'bg-teal-500/10 border-teal-500/20 text-teal-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
                             <i className={`ph-light text-4xl ${scanResult.type === 'success' ? 'ph-check' : 'ph-x'}`}></i>
                         </div>
 
-                        <h2 className="text-2xl font-light text-white mb-2 tracking-wide relative z-10">
+                        <h2 className="text-2xl font-light text-white mb-2 tracking-wide relative z-10 text-center">
                             {scanResult.title}
                         </h2>
                         <p className="text-sm text-slate-400 font-light mb-8 text-center relative z-10">
@@ -226,11 +226,30 @@ const Scanner = () => {
                             {scanResult.participant?.category && (
                                 <p className="text-xs text-slate-400 font-light mt-1">{scanResult.participant.category}</p>
                             )}
+
+                            {/* 🚀 NEW: DYNAMIC METADATA GRID 🚀 */}
+                            {scanResult.participant?.metadata && Object.keys(scanResult.participant.metadata).length > 0 && (
+                                <div className="mt-5 border-t border-white/10 pt-5">
+                                    <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-teal-500/70 mb-3 text-left">Additional Details</h4>
+                                    <div className="grid grid-cols-2 gap-2 text-left">
+                                        {Object.entries(scanResult.participant.metadata).map(([key, value]) => (
+                                            <div key={key} className="bg-slate-900/50 border border-white/5 p-3 rounded-2xl flex flex-col justify-center">
+                                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate">
+                                                    {key}
+                                                </span>
+                                                <span className="text-xs font-bold text-slate-300 truncate" title={String(value)}>
+                                                    {String(value)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         
                         <button 
                             onClick={closeResult} 
-                            className={`w-full py-5 text-white font-semibold tracking-[0.2em] uppercase text-[11px] rounded-[1.5rem] active:scale-95 transition-all shadow-lg relative z-10 ${scanResult.type === 'success' ? 'bg-teal-500/90 hover:bg-teal-400' : 'bg-rose-500/90 hover:bg-rose-400'}`}
+                            className={`w-full py-5 text-white font-semibold tracking-[0.2em] uppercase text-[11px] rounded-[1.5rem] active:scale-95 transition-all shadow-lg relative z-10 shrink-0 ${scanResult.type === 'success' ? 'bg-teal-500/90 hover:bg-teal-400' : 'bg-rose-500/90 hover:bg-rose-400'}`}
                         >
                             Continue
                         </button>

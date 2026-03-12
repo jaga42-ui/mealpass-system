@@ -4,7 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 
 // Route Imports
-const adminRoutes = require('./routes/adminRoutes'); // <-- Add this
+const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 const scanRoutes = require('./routes/scanRoutes');
 const participantRoutes = require('./routes/participantRoutes');
@@ -21,12 +21,14 @@ app.use(cors({
     credentials: true 
 }));
 
-app.use(express.json());
+// 🚀 THE FIX: Increased payload limit to 50mb to prevent 413 errors on large uploads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // --- ROUTES ---
 app.use('/api/auth', authRoutes);
 app.use('/api/scans', scanRoutes);
-app.use('/api/admin', adminRoutes); // <-- Add this
+app.use('/api/admin', adminRoutes);
 app.use('/api/participants', participantRoutes);
 
 // Basic Health Check (Good for Render to ping to keep the service awake)

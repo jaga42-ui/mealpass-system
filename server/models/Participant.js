@@ -3,9 +3,8 @@ const mongoose = require('mongoose');
 const participantSchema = new mongoose.Schema({
     qrId: { 
         type: String, 
-        // required: true is REMOVED so they can be added without a badge
         unique: true, 
-        sparse: true // 🚀 THE MAGIC KEY: Allows multiple people to have no badge without crashing
+        sparse: true 
     },
     name: { 
         type: String, 
@@ -21,19 +20,23 @@ const participantSchema = new mongoose.Schema({
     },
     photoUrl: {
         type: String,
-        default: '' // Optional: URL to their headshot for visual verification
+        default: '' 
     },
     totpSecret: {
         type: String
-        // required: true is REMOVED so they can be added without a cryptographic key
     },
     isActive: { 
         type: Boolean, 
         default: true 
     },
-    isApproved: { // Added so the frontend toggle doesn't crash
+    isApproved: { 
         type: Boolean,
         default: true
+    },
+    // 🚀 THE MAGIC BUCKET: This will hold ANY extra columns from your Excel file!
+    metadata: { 
+        type: mongoose.Schema.Types.Mixed, 
+        default: {} 
     }
 }, { timestamps: true });
 

@@ -49,17 +49,34 @@ exports.bulkUploadParticipants = async (req, res) => {
         }
 
         const formattedData = participants.map(p => {
-            // 🚀 HYBRID FIX: We generate the digital secret now, so the Web Portal works later!
+            // 1. Extract standard fields safely (handles Excel capitalization weirdness)
+            const rawName = p.name || p.Name;
+            const rawCategory = p.category || p.Category || 'Participant';
+            const rawDepartment = p.department || p.Department || 'N/A';
+            const rawQrId = p.qrId || p.QR || p.qr;
+
+            // 2. Grab EVERYTHING else and put it in the extraData object
+            const standardKeys = ['name', 'Name', 'category', 'Category', 'department', 'Department', 'qrId', 'QR', 'qr'];
+            const extraData = {};
+            
+            Object.keys(p).forEach(key => {
+                if (!standardKeys.includes(key)) {
+                    extraData[key] = p[key]; // This saves Phone, Email, Blood Group, etc!
+                }
+            });
+
+            // 3. Build the final participant
             const newParticipant = {
-                name: p.name,
-                category: p.category || 'Participant',
-                department: p.department || 'N/A',
-                totpSecret: speakeasy.generateSecret({ length: 20 }).base32 
+                name: rawName || 'Unknown Participant',
+                category: rawCategory,
+                department: rawDepartment,
+                totpSecret: speakeasy.generateSecret({ length: 20 }).base32,
+                metadata: extraData // 🚀 Throw the whole bucket into the database!
             };
 
-            // Only attach the qrId if it exists to prevent "null" Duplicate Key errors
-            if (p.qrId && p.qrId.trim() !== '') {
-                newParticipant.qrId = p.qrId.toUpperCase();
+            // Only attach the qrId if it exists
+            if (rawQrId && String(rawQrId).trim() !== '') {
+                newParticipant.qrId = String(rawQrId).toUpperCase();
             }
 
             return newParticipant;
@@ -68,7 +85,7 @@ exports.bulkUploadParticipants = async (req, res) => {
         const result = await Participant.insertMany(formattedData, { ordered: false });
         
         res.status(201).json({ 
-            message: `Successfully uploaded ${result.length} participants.`, 
+            message: `Successfully uploaded ${result.length} participants with full data.`, 
             count: result.length 
         });
     } catch (error) {
