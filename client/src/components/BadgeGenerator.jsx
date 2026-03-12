@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import api from '../api/axios';
 
@@ -6,6 +6,9 @@ const BadgeGenerator = () => {
     const [count, setCount] = useState(10); 
     const [badges, setBadges] = useState([]);
     const [loading, setLoading] = useState(false);
+    
+    // 🚀 We use a ref to grab the raw SVG data without rendering it on the screen
+    const printRef = useRef(null);
 
     const handleGenerate = async () => {
         if (count < 1 || count > 1000) return alert("Please enter a number between 1 and 1000");
@@ -22,30 +25,83 @@ const BadgeGenerator = () => {
         }
     };
 
+    // 🚀 THE MAGIC: Creates a completely isolated document just for the printer
+    const executeIsolatedPrint = () => {
+        const printContent = printRef.current.innerHTML;
+        const iframe = document.createElement('iframe');
+        
+        // Hide the iframe off-screen
+        iframe.style.position = 'fixed';
+        iframe.style.bottom = '0';
+        iframe.style.right = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
+
+        // Write a pristine HTML document with strict, un-sliceable CSS floats
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Print Secure Badges</title>
+                <style>
+                    /* 100% Isolated CSS - Your app's Navbar and Tailwind cannot interfere here! */
+                    body { 
+                        margin: 0; 
+                        padding: 10mm; 
+                        background: white; 
+                    }
+                    .qr-card {
+                        float: left;
+                        width: 21%;
+                        margin: 2%;
+                        padding: 15px;
+                        border: 2px solid #e2e8f0;
+                        border-radius: 16px;
+                        box-sizing: border-box;
+                        /* Forces printer to push the box to the next page if it doesn't fit */
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                    }
+                    .qr-card svg {
+                        width: 100%;
+                        height: auto;
+                        display: block;
+                    }
+                    .clear { clear: both; }
+                    
+                    @media print {
+                        @page { margin: 15mm; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${printContent}
+                <div class="clear"></div>
+            </body>
+            </html>
+        `);
+        doc.close();
+
+        // Wait 500ms for the browser to parse the SVGs, then trigger print!
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            
+            // Clean up the DOM after printing
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+            }, 2000);
+        }, 500);
+    };
+
     return (
         <div className="w-full max-w-4xl mx-auto relative z-20">
-            
-            {/* 🚀 THE FIX: Strict print rules to protect the page margins and hide your Navbar */}
-            <style>{`
-                @media print {
-                    body, html, #root {
-                        height: auto !important;
-                        min-height: auto !important;
-                        overflow: visible !important;
-                        background-color: white !important;
-                    }
-                    /* This attempts to hide your ACCESSPRO header so it doesn't crowd the QR codes */
-                    header, nav, .sidebar {
-                        display: none !important;
-                    }
-                    @page {
-                        margin: 20mm; /* A solid 20mm margin prevents printer rollers from slicing the top */
-                    }
-                }
-            `}</style>
-
-            {/* --- CONTROL PANEL (Hidden entirely during actual printing) --- */}
-            <div className="print:hidden bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-xl mb-6">
+            {/* --- CONTROL PANEL --- */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-xl mb-6">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                     
                     <div className="flex items-center gap-4">
@@ -80,7 +136,7 @@ const BadgeGenerator = () => {
 
             {/* --- CLEAN SUCCESS UI --- */}
             {badges.length > 0 && !loading && (
-                <div className="print:hidden bg-emerald-500/10 border border-emerald-500/30 p-8 rounded-[2rem] text-center shadow-[0_10px_30px_rgba(16,185,129,0.1)] mt-8 animate-enter">
+                <div className="bg-emerald-500/10 border border-emerald-500/30 p-8 rounded-[2rem] text-center shadow-[0_10px_30px_rgba(16,185,129,0.1)] mt-8 animate-enter">
                     <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/50 shadow-inner">
                         <i className="ph-fill ph-check-circle text-5xl text-emerald-400"></i>
                     </div>
@@ -89,7 +145,7 @@ const BadgeGenerator = () => {
                         Tokens are cryptographically secured and ready for physical print.
                     </p>
                     <button 
-                        onClick={() => window.print()}
+                        onClick={executeIsolatedPrint} // 🚀 Triggers the new isolated iframe print
                         className="w-full md:w-auto px-10 py-4 bg-white text-slate-900 rounded-2xl font-black tracking-widest uppercase text-xs transition-all hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(255,255,255,0.3)] flex items-center justify-center gap-3 mx-auto"
                     >
                         <i className="ph-bold ph-printer text-lg"></i> Send to Printer
@@ -98,27 +154,26 @@ const BadgeGenerator = () => {
             )}
 
             {badges.length === 0 && !loading && (
-                <div className="text-center py-20 border-2 border-dashed border-white/10 rounded-[2rem] print:hidden shadow-inner bg-slate-900/30">
+                <div className="text-center py-20 border-2 border-dashed border-white/10 rounded-[2rem] shadow-inner bg-slate-900/30">
                     <i className="ph-duotone ph-qr-code text-4xl text-slate-600 mb-3 opacity-50"></i>
                     <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Awaiting Generation Command</p>
                 </div>
             )}
 
-            {/* --- THE ACTUAL PRINTABLE GRID --- */}
-            <div className="hidden print:block print:w-full print:bg-white text-center">
-                {badges.map((badgeString, index) => (
-                    <div 
-                        key={index} 
-                        // 🚀 THE FIX: inline-flex perfectly centers the SVG vertically and align-top stops row jitter
-                        className="print:inline-flex print:items-center print:justify-center print:w-[20%] print:m-[2%] p-4 border-2 border-slate-300 rounded-2xl bg-white align-top"
-                        style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }} 
-                    >
-                        <QRCodeSVG 
-                            value={badgeString} 
-                            size={120} 
-                        />
-                    </div>
-                ))}
+            {/* --- 🛡️ THE HIDDEN PRINT VAULT --- */}
+            {/* This keeps the QR SVGs in the DOM so we can copy them, but invisible to the user! */}
+            <div className="absolute left-[-9999px] top-[-9999px] invisible" aria-hidden="true">
+                <div ref={printRef}>
+                    {badges.map((badgeString, index) => (
+                        <div key={index} className="qr-card">
+                            <QRCodeSVG 
+                                value={badgeString} 
+                                size={256} // High-res SVG for crisp printing
+                                level="H" 
+                            />
+                        </div>
+                    ))}
+                </div>
             </div>
 
         </div>
