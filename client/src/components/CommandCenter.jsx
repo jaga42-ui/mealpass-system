@@ -50,7 +50,7 @@ const CommandCenter = () => {
         } catch (err) { showMessage('Failed to update role.', 'error'); }
     };
 
-    // --- 3. BULLETPROOF BULK EXCEL UPLOAD 🚀 ---
+    // --- 3. 🛡️ REINFORCED BULK EXCEL UPLOAD ---
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -62,41 +62,57 @@ const CommandCenter = () => {
                 const bstr = evt.target.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
-                
-                // 🚀 FIX 1: defval prevents empty cells from breaking the object, blankrows skips empty rows
-                const rawData = XLSX.utils.sheet_to_json(wb.Sheets[wsname], { defval: "", blankrows: false });
+                const ws = wb.Sheets[wsname];
 
-                // 🚀 FIX 2: Sanitize the data before it ever touches the backend
-                const cleanedData = rawData.map(row => {
-                    // Create a lowercase, space-free map of the row for easy searching
-                    const lowerRow = {};
-                    Object.keys(row).forEach(k => {
-                        if (k) lowerRow[k.trim().toLowerCase()] = row[k];
-                    });
+                // 🚀 FIX: Convert to RAW 2D Array instead of JSON objects.
+                // This ignores header naming issues entirely.
+                const rows = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false });
 
-                    // 🚀 THE ULTIMATE FALLBACK: If they didn't name the column "Name", just grab the first column!
-                    const firstColumnValue = Object.values(row)[0];
-
-                    return {
-                        name: lowerRow['name'] || lowerRow['full name'] || lowerRow['participant'] || String(firstColumnValue),
-                        category: lowerRow['category'] || lowerRow['role'] || lowerRow['type'] || 'Participant',
-                        department: lowerRow['department'] || lowerRow['dept'] || lowerRow['company'] || 'N/A',
-                        qrId: lowerRow['qrid'] || lowerRow['qr'] || lowerRow['id'] || null,
-                        ...row // Keep the raw data so the backend metadata bucket catches it all!
-                    };
-                }).filter(p => p.name && String(p.name).trim() !== ''); // Filter out completely accidental blank rows
-
-                if (cleanedData.length === 0) {
-                    showMessage('No valid data found in Excel sheet. Check formatting.', 'error');
+                if (rows.length < 1) {
+                    showMessage('The file appears to be empty.', 'error');
                     setLoading(false);
-                    e.target.value = null;
                     return;
                 }
+
+                // First row is usually headers
+                const headers = rows[0].map(h => String(h).trim().toLowerCase());
+                
+                // Find column indexes
+                const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('participant'));
+                const catIdx = headers.findIndex(h => h.includes('cat') || h.includes('role') || h.includes('type'));
+                const deptIdx = headers.findIndex(h => h.includes('dept') || h.includes('department'));
+                const qrIdx = headers.findIndex(h => h.includes('qr') || h.includes('id'));
+
+                // Map the data skipping the header row
+                const cleanedData = rows.slice(1).map((row) => {
+                    const participant = {
+                        // Fallback: if no "name" header found, use the first column (index 0)
+                        name: nameIdx !== -1 ? row[nameIdx] : row[0],
+                        category: catIdx !== -1 ? row[catIdx] : 'Participant',
+                        department: deptIdx !== -1 ? row[deptIdx] : 'N/A',
+                    };
+
+                    if (qrIdx !== -1 && row[qrIdx]) {
+                        participant.qrId = String(row[qrIdx]).trim().toUpperCase();
+                    }
+
+                    // Add all other columns to the object so the backend metadata bucket catches them
+                    headers.forEach((header, i) => {
+                        if (header && !['name', 'category', 'department', 'qrid'].includes(header)) {
+                            participant[header] = row[i];
+                        }
+                    });
+
+                    return participant;
+                }).filter(p => p.name); // Final check to ensure we aren't sending empty names
+
+                console.log("Cleaned Data being sent:", cleanedData);
 
                 const res = await api.post('/admin/bulk-upload', cleanedData);
                 showMessage(res.data.message, 'success');
             } catch (err) {
-                showMessage(err.response?.data?.message || err.message || 'Upload failed.', 'error');
+                console.error("Upload Error:", err);
+                showMessage(err.response?.data?.message || 'Upload failed. Check file format.', 'error');
             } finally {
                 setLoading(false);
                 e.target.value = null; 
@@ -180,7 +196,6 @@ const CommandCenter = () => {
                 doc.setDrawColor(200);
                 doc.roundedRect(x, y, badgeWidth, badgeHeight, 3, 3);
 
-                // Only generate QR if the user has an ID assigned
                 if (p.qrId) {
                     const qrDataUrl = await QRCode.toDataURL(p.qrId, { margin: 1, width: 400 });
                     const qrXOffset = x + (badgeWidth - qrSize) / 2;
@@ -194,7 +209,7 @@ const CommandCenter = () => {
                 doc.setFontSize(10);
                 doc.setTextColor(30);
                 doc.setFont("helvetica", "bold");
-                const shortName = p.name.length > 18 ? p.name.substring(0, 15) + '...' : p.name;
+                const shortName = p.name ? (p.name.length > 18 ? p.name.substring(0, 15) + '...' : p.name) : "Unnamed";
                 const textWidth = doc.getTextWidth(shortName);
                 doc.text(shortName, x + (badgeWidth - textWidth) / 2, y + 52);
 
@@ -242,187 +257,105 @@ const CommandCenter = () => {
 
     return (
         <div className="space-y-6 animate-enter w-full max-w-md mx-auto pb-10">
-            
             {message && (
                 <div className={`p-4 rounded-2xl text-[11px] font-bold text-center backdrop-blur-sm shadow-lg animate-enter border ${message.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-teal-500/10 border-teal-500/30 text-teal-300'}`}>
                     {message.text}
                 </div>
             )}
 
-            {/* SECTION 1: GLOBAL OVERRIDES */}
-            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] relative overflow-hidden">
-                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3 tracking-wide">
-                    <div className="w-8 h-8 bg-teal-500/20 border border-teal-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.2)]">
+            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
+                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-teal-500/20 border border-teal-500/30 rounded-lg flex items-center justify-center">
                         <i className="ph-bold ph-sliders text-teal-400"></i>
                     </div>
                     System Overrides
                 </h3>
-                
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between bg-slate-900/50 border border-white/5 p-4 rounded-2xl shadow-inner">
+                    <div className="flex items-center justify-between bg-slate-900/50 border border-white/5 p-4 rounded-2xl">
                         <span className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest">Lock Scanners</span>
-                        <button 
-                            onClick={() => handleUpdateSettings('isScannerLocked', !settings.isScannerLocked)}
-                            className={`w-12 h-6 rounded-full relative transition-all duration-300 shadow-inner ${settings.isScannerLocked ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-slate-700'}`}
-                        >
-                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-300 ${settings.isScannerLocked ? 'left-7' : 'left-1'}`}></div>
+                        <button onClick={() => handleUpdateSettings('isScannerLocked', !settings.isScannerLocked)} className={`w-12 h-6 rounded-full relative transition-all ${settings.isScannerLocked ? 'bg-red-500' : 'bg-slate-700'}`}>
+                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${settings.isScannerLocked ? 'left-7' : 'left-1'}`}></div>
                         </button>
                     </div>
-
-                    <div className="flex flex-col bg-slate-900/50 border border-white/5 p-4 rounded-2xl shadow-inner">
-                        <span className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest mb-3">Force Active Meal</span>
-                        <select 
-                            value={settings.activeMeal}
-                            onChange={(e) => handleUpdateSettings('activeMeal', e.target.value)}
-                            className="bg-slate-800 text-white font-bold py-3 px-4 rounded-xl border border-white/10 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner appearance-none"
-                        >
-                            <option value="Breakfast" className="bg-slate-800">Breakfast</option>
-                            <option value="Lunch" className="bg-slate-800">Lunch</option>
-                            <option value="Snacks" className="bg-slate-800">Snacks</option>
-                            <option value="Dinner" className="bg-slate-800">Dinner</option>
+                    <div className="flex flex-col bg-slate-900/50 border border-white/5 p-4 rounded-2xl">
+                        <span className="text-[10px] font-black text-teal-200/70 uppercase mb-3">Force Active Meal</span>
+                        <select value={settings.activeMeal} onChange={(e) => handleUpdateSettings('activeMeal', e.target.value)} className="bg-slate-800 text-white font-bold py-3 px-4 rounded-xl border border-white/10 outline-none">
+                            <option value="Breakfast">Breakfast</option>
+                            <option value="Lunch">Lunch</option>
+                            <option value="Snacks">Snacks</option>
+                            <option value="Dinner">Dinner</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            {/* SECTION 2: DATA OPERATIONS */}
             <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
-                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3 tracking-wide">
-                    <div className="w-8 h-8 bg-blue-500/20 border border-blue-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-500/20 border border-blue-500/30 rounded-lg flex items-center justify-center">
                         <i className="ph-bold ph-database text-blue-400"></i>
                     </div>
                     Data Center
                 </h3>
-                
                 <div className="grid grid-cols-3 gap-3">
-                    <label className="relative flex flex-col items-center justify-center py-5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-2xl cursor-pointer transition-all duration-300 text-center border border-emerald-500/30 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] active:scale-95 group">
+                    <label className="relative flex flex-col items-center justify-center py-5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-2xl cursor-pointer border border-emerald-500/30 group">
                         <i className="ph-duotone ph-file-xls text-3xl text-emerald-400 mb-2 group-hover:scale-110 transition-transform"></i>
-                        <span className="text-[9px] font-black text-emerald-300/80 uppercase tracking-widest">Upload</span>
+                        <span className="text-[9px] font-black text-emerald-300/80 uppercase">Upload</span>
                         <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleFileUpload} disabled={loading} />
                     </label>
-
-                    <button 
-                        onClick={generateStatsPDF}
-                        disabled={loading}
-                        className="flex flex-col items-center justify-center py-5 bg-blue-500/10 hover:bg-blue-500/20 rounded-2xl transition-all duration-300 text-center border border-blue-500/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] active:scale-95 disabled:opacity-50 group"
-                    >
+                    <button onClick={generateStatsPDF} disabled={loading} className="flex flex-col items-center justify-center py-5 bg-blue-500/10 hover:bg-blue-500/20 rounded-2xl border border-blue-500/30 group">
                         <i className="ph-duotone ph-file-pdf text-3xl text-blue-400 mb-2 group-hover:scale-110 transition-transform"></i>
-                        <span className="text-[9px] font-black text-blue-300/80 uppercase tracking-widest">Report</span>
+                        <span className="text-[9px] font-black text-blue-300/80 uppercase">Report</span>
                     </button>
-
-                    <button 
-                        onClick={generateQRPDF}
-                        disabled={loading}
-                        className="flex flex-col items-center justify-center py-5 bg-teal-500/10 hover:bg-teal-500/20 rounded-2xl transition-all duration-300 text-center border border-teal-500/30 hover:shadow-[0_0_20px_rgba(20,184,166,0.2)] active:scale-95 disabled:opacity-50 group"
-                    >
+                    <button onClick={generateQRPDF} disabled={loading} className="flex flex-col items-center justify-center py-5 bg-teal-500/10 hover:bg-teal-500/20 rounded-2xl border border-teal-500/30 group">
                         <i className="ph-duotone ph-printer text-3xl text-teal-400 mb-2 group-hover:scale-110 transition-transform"></i>
                         <span className="text-[9px] font-black text-teal-300/80 uppercase tracking-widest">Print IDs</span>
                     </button>
                 </div>
             </div>
 
-            {/* SECTION 3: STAFF MANAGEMENT */}
-            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
-                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3 tracking-wide">
-                    <div className="w-8 h-8 bg-purple-500/20 border border-purple-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem]">
+                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-purple-500/20 border border-purple-500/30 rounded-lg flex items-center justify-center">
                         <i className="ph-bold ph-shield-check text-purple-400"></i>
                     </div>
                     Staff Access
                 </h3>
-                
-                <div className="space-y-3 max-h-60 overflow-y-auto no-scrollbar pr-1">
+                <div className="space-y-3 max-h-60 overflow-y-auto no-scrollbar">
                     {users.map(u => (
-                        <div key={u._id} className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between shadow-inner">
-                            <div className="overflow-hidden mr-2">
-                                <p className="text-xs font-bold text-slate-300 truncate">{u.email}</p>
-                            </div>
-                            <select 
-                                value={u.role}
-                                onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                                className={`text-[9px] font-black uppercase tracking-widest rounded-xl px-3 py-2 outline-none appearance-none text-center cursor-pointer ${
-                                    u.role === 'admin' ? 'bg-purple-500/20 border border-purple-500/30 text-purple-300' : 
-                                    u.role === 'volunteer' ? 'bg-teal-500/20 border border-teal-500/30 text-teal-300' : 
-                                    'bg-amber-500/20 border border-amber-500/30 text-amber-300'
-                                }`}
-                            >
-                                <option value="pending" className="bg-slate-800 text-amber-400">Pending</option>
-                                <option value="volunteer" className="bg-slate-800 text-teal-400">Volunteer</option>
-                                <option value="admin" className="bg-slate-800 text-purple-400">Admin</option>
+                        <div key={u._id} className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between">
+                            <p className="text-xs font-bold text-slate-300 truncate mr-2">{u.email}</p>
+                            <select value={u.role} onChange={(e) => handleRoleChange(u._id, e.target.value)} className={`text-[9px] font-black uppercase rounded-xl px-3 py-2 outline-none appearance-none ${u.role === 'admin' ? 'text-purple-300' : 'text-teal-300'}`}>
+                                <option value="pending">Pending</option>
+                                <option value="volunteer">Volunteer</option>
+                                <option value="admin">Admin</option>
                             </select>
                         </div>
                     ))}
-                    {users.length === 0 && <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 text-center py-4">No staff found.</p>}
                 </div>
             </div>
 
-            {/* SECTION 4: 🚨 DANGER ZONE 🚨 */}
-            <div className="bg-rose-950/20 border border-rose-500/30 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] relative overflow-hidden mt-8">
-                <div className="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none"></div>
-                <h3 className="font-black text-rose-500 text-lg mb-2 flex items-center gap-3 tracking-wide relative z-10">
-                    <div className="w-8 h-8 bg-rose-500/20 border border-rose-500/50 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(244,63,94,0.3)]">
+            <div className="bg-rose-950/20 border border-rose-500/30 p-6 rounded-[2rem] mt-8">
+                <h3 className="font-black text-rose-500 text-lg mb-2 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-rose-500/20 border border-rose-500/50 rounded-lg flex items-center justify-center">
                         <i className="ph-bold ph-warning-octagon text-rose-400"></i>
                     </div>
                     Danger Zone
                 </h3>
-                <p className="text-[10px] text-rose-300/60 uppercase tracking-widest mb-5 relative z-10 ml-11">Irreversible destructive actions</p>
-
-                <div className="flex items-center justify-between bg-black/40 border border-rose-500/20 p-4 rounded-2xl shadow-inner relative z-10">
-                    <div>
-                        <h4 className="text-white font-black text-sm tracking-wide">Purge Database</h4>
-                        <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-1">Wipe rosters & scans</p>
-                    </div>
-                    <button 
-                        onClick={() => setIsPurgeModalOpen(true)}
-                        className="px-4 py-2 bg-rose-500 hover:bg-rose-400 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-[0_0_15px_rgba(244,63,94,0.4)] active:scale-95 transition-all"
-                    >
-                        Initiate
-                    </button>
-                </div>
+                <button onClick={() => setIsPurgeModalOpen(true)} className="w-full mt-4 py-4 bg-rose-500 text-white font-black uppercase text-[10px] rounded-xl">Purge Database</button>
             </div>
 
-            {/* 🚨 SCROLL-PROOFED PURGE CONFIRMATION MODAL 🚨 */}
             {isPurgeModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 sm:p-6 overflow-y-auto">
-                    <div className="bg-slate-900 border border-rose-500/50 w-full max-w-sm rounded-[2.5rem] p-8 shadow-[0_0_50px_rgba(244,63,94,0.2)] animate-enter relative overflow-hidden text-center my-auto">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-rose-500"></div>
-                        
-                        <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-rose-500/50">
-                            <i className="ph-fill ph-warning-diamond text-4xl text-rose-500 animate-pulse"></i>
-                        </div>
-                        
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 p-4">
+                    <div className="bg-slate-900 border border-rose-500/50 w-full max-w-sm rounded-[2.5rem] p-8 text-center">
                         <h3 className="text-2xl font-black text-white mb-2">Confirm Purge</h3>
-                        <p className="text-[11px] text-rose-300 font-bold uppercase tracking-widest leading-relaxed mb-6">
-                            This will permanently destroy all participant records and meal scan history.
-                        </p>
-
-                        <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] block mb-2">Type "PURGE" to confirm</label>
-                        <input 
-                            type="text" 
-                            value={purgeConfirmText}
-                            onChange={(e) => setPurgeConfirmText(e.target.value)}
-                            className="w-full bg-black/50 border border-rose-500/30 rounded-xl py-4 text-center text-white font-black tracking-widest focus:outline-none focus:border-rose-400 mb-6 uppercase"
-                            placeholder="PURGE"
-                        />
-
+                        <input type="text" value={purgeConfirmText} onChange={(e) => setPurgeConfirmText(e.target.value)} className="w-full bg-black/50 border border-rose-500/30 rounded-xl py-4 text-center text-white focus:outline-none mb-6 uppercase" placeholder="PURGE" />
                         <div className="flex gap-3">
-                            <button 
-                                onClick={() => {setIsPurgeModalOpen(false); setPurgeConfirmText('');}}
-                                className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-white/10"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={executePurge}
-                                disabled={purgeConfirmText !== 'PURGE' || isPurging}
-                                className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all ${purgeConfirmText === 'PURGE' ? 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'bg-slate-800 text-slate-600'}`}
-                            >
-                                {isPurging ? 'Purging...' : 'Destroy Data'}
-                            </button>
+                            <button onClick={() => setIsPurgeModalOpen(false)} className="flex-1 py-4 bg-white/5 text-slate-400 font-black rounded-xl">Cancel</button>
+                            <button onClick={executePurge} disabled={purgeConfirmText !== 'PURGE' || isPurging} className="flex-1 py-4 bg-rose-500 text-white font-black rounded-xl">Destroy</button>
                         </div>
                     </div>
                 </div>
             )}
-
         </div>
     );
 };
