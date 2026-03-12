@@ -50,7 +50,7 @@ const CommandCenter = () => {
         } catch (err) { showMessage('Failed to update role.', 'error'); }
     };
 
-    // --- 3. BULK EXCEL UPLOAD ---
+    // --- 3. BULLETPROOF BULK EXCEL UPLOAD 🚀 ---
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -62,13 +62,38 @@ const CommandCenter = () => {
                 const bstr = evt.target.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
-                const data = XLSX.utils.sheet_to_json(wb.Sheets[wsname]);
+                
+                // 🚀 FIX 1: defval prevents empty cells from breaking the object, blankrows skips empty rows
+                const rawData = XLSX.utils.sheet_to_json(wb.Sheets[wsname], { defval: "", blankrows: false });
 
-                if (data.length > 0 && !data[0].qrId && Object.keys(data[0]).length > 0) {
-                    // It's okay if qrId is missing, our backend handles it, but let's ensure it's an array
+                // 🚀 FIX 2: Sanitize the data before it ever touches the backend
+                const cleanedData = rawData.map(row => {
+                    // Create a lowercase, space-free map of the row for easy searching
+                    const lowerRow = {};
+                    Object.keys(row).forEach(k => {
+                        if (k) lowerRow[k.trim().toLowerCase()] = row[k];
+                    });
+
+                    // 🚀 THE ULTIMATE FALLBACK: If they didn't name the column "Name", just grab the first column!
+                    const firstColumnValue = Object.values(row)[0];
+
+                    return {
+                        name: lowerRow['name'] || lowerRow['full name'] || lowerRow['participant'] || String(firstColumnValue),
+                        category: lowerRow['category'] || lowerRow['role'] || lowerRow['type'] || 'Participant',
+                        department: lowerRow['department'] || lowerRow['dept'] || lowerRow['company'] || 'N/A',
+                        qrId: lowerRow['qrid'] || lowerRow['qr'] || lowerRow['id'] || null,
+                        ...row // Keep the raw data so the backend metadata bucket catches it all!
+                    };
+                }).filter(p => p.name && String(p.name).trim() !== ''); // Filter out completely accidental blank rows
+
+                if (cleanedData.length === 0) {
+                    showMessage('No valid data found in Excel sheet. Check formatting.', 'error');
+                    setLoading(false);
+                    e.target.value = null;
+                    return;
                 }
 
-                const res = await api.post('/admin/bulk-upload', data);
+                const res = await api.post('/admin/bulk-upload', cleanedData);
                 showMessage(res.data.message, 'success');
             } catch (err) {
                 showMessage(err.response?.data?.message || err.message || 'Upload failed.', 'error');
@@ -273,7 +298,7 @@ const CommandCenter = () => {
                     <label className="relative flex flex-col items-center justify-center py-5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-2xl cursor-pointer transition-all duration-300 text-center border border-emerald-500/30 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] active:scale-95 group">
                         <i className="ph-duotone ph-file-xls text-3xl text-emerald-400 mb-2 group-hover:scale-110 transition-transform"></i>
                         <span className="text-[9px] font-black text-emerald-300/80 uppercase tracking-widest">Upload</span>
-                        <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} disabled={loading} />
+                        <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleFileUpload} disabled={loading} />
                     </label>
 
                     <button 
