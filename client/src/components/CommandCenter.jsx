@@ -1,363 +1,490 @@
-import { useState, useEffect } from 'react';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import QRCode from 'qrcode'; 
-import api from '../api/axios';
+import { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
+import api from "../api/axios";
 
 const CommandCenter = () => {
-    const [users, setUsers] = useState([]);
-    const [settings, setSettings] = useState({ activeMeal: 'Lunch', isScannerLocked: false });
-    const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [settings, setSettings] = useState({
+    activeMeal: "Lunch",
+    isScannerLocked: false,
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState(null);
 
-    // --- 🚨 PURGE STATE ---
-    const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
-    const [purgeConfirmText, setPurgeConfirmText] = useState('');
-    const [isPurging, setIsPurging] = useState(false);
+  // --- 🚨 PURGE STATE ---
+  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
+  const [purgeConfirmText, setPurgeConfirmText] = useState("");
+  const [isPurging, setIsPurging] = useState(false);
 
-    useEffect(() => {
-        fetchSettings();
-        fetchUsers();
-    }, []);
+  useEffect(() => {
+    fetchSettings();
+    fetchUsers();
+  }, []);
 
-    const fetchSettings = async () => {
-        try { const res = await api.get('/admin/settings'); setSettings(res.data); } 
-        catch (err) { console.error("Error fetching settings", err); }
-    };
+  const fetchSettings = async () => {
+    try {
+      const res = await api.get("/admin/settings");
+      setSettings(res.data);
+    } catch (err) {
+      console.error("Error fetching settings", err);
+    }
+  };
 
-    const fetchUsers = async () => {
-        try { const res = await api.get('/admin/users'); setUsers(res.data); } 
-        catch (err) { console.error("Error fetching users", err); }
-    };
+  const fetchUsers = async () => {
+    try {
+      const res = await api.get("/admin/users");
+      setUsers(res.data);
+    } catch (err) {
+      console.error("Error fetching users", err);
+    }
+  };
 
-    // --- 1. GLOBAL SETTINGS CONTROLS ---
-    const handleUpdateSettings = async (key, value) => {
-        try {
-            const updated = { ...settings, [key]: value };
-            setSettings(updated);
-            await api.put('/admin/settings', updated);
-            showMessage('System settings updated globally.', 'success');
-        } catch (err) { showMessage('Failed to update settings.', 'error'); }
-    };
+  // --- 1. GLOBAL SETTINGS CONTROLS ---
+  const handleUpdateSettings = async (key, value) => {
+    try {
+      const updated = { ...settings, [key]: value };
+      setSettings(updated);
+      await api.put("/admin/settings", updated);
+      showMessage("System settings updated globally.", "success");
+    } catch (err) {
+      showMessage("Failed to update settings.", "error");
+    }
+  };
 
-    // --- 2. STAFF ROLE MANAGEMENT ---
-    const handleRoleChange = async (userId, newRole) => {
-        try {
-            await api.put(`/admin/users/${userId}/role`, { role: newRole });
-            setUsers(users.map(u => u._id === userId ? { ...u, role: newRole } : u));
-            showMessage('Staff role updated successfully.', 'success');
-        } catch (err) { showMessage('Failed to update role.', 'error'); }
-    };
+  // --- 2. STAFF ROLE MANAGEMENT ---
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      await api.put(`/admin/users/${userId}/role`, { role: newRole });
+      setUsers(
+        users.map((u) => (u._id === userId ? { ...u, role: newRole } : u)),
+      );
+      showMessage("Staff role updated successfully.", "success");
+    } catch (err) {
+      showMessage("Failed to update role.", "error");
+    }
+  };
 
-    // --- 3. 🛡️ REINFORCED BULK EXCEL UPLOAD ---
-    const handleFileUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+  // --- 3. 🛡️ REINFORCED BULK EXCEL UPLOAD ---
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-        setLoading(true);
-        const reader = new FileReader();
-        reader.onload = async (evt) => {
-            try {
-                const bstr = evt.target.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
 
-                // 🚀 FIX: Convert to RAW 2D Array instead of JSON objects.
-                // This ignores header naming issues entirely.
-                const rows = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false });
+        // 🚀 FIX: Convert to RAW 2D Array instead of JSON objects.
+        // This ignores header naming issues entirely.
+        const rows = XLSX.utils.sheet_to_json(ws, {
+          header: 1,
+          blankrows: false,
+        });
 
-                if (rows.length < 1) {
-                    showMessage('The file appears to be empty.', 'error');
-                    setLoading(false);
-                    return;
-                }
+        if (rows.length < 1) {
+          showMessage("The file appears to be empty.", "error");
+          setLoading(false);
+          return;
+        }
 
-                // First row is usually headers
-                const headers = rows[0].map(h => String(h).trim().toLowerCase());
-                
-                // Find column indexes
-                const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('participant'));
-                const catIdx = headers.findIndex(h => h.includes('cat') || h.includes('role') || h.includes('type'));
-                const deptIdx = headers.findIndex(h => h.includes('dept') || h.includes('department'));
-                const qrIdx = headers.findIndex(h => h.includes('qr') || h.includes('id'));
+        // First row is usually headers
+        const headers = rows[0].map((h) => String(h).trim().toLowerCase());
 
-                // Map the data skipping the header row
-                const cleanedData = rows.slice(1).map((row) => {
-                    const participant = {
-                        // Fallback: if no "name" header found, use the first column (index 0)
-                        name: nameIdx !== -1 ? row[nameIdx] : row[0],
-                        category: catIdx !== -1 ? row[catIdx] : 'Participant',
-                        department: deptIdx !== -1 ? row[deptIdx] : 'N/A',
-                    };
+        // Find column indexes
+        const nameIdx = headers.findIndex(
+          (h) => h.includes("name") || h.includes("participant"),
+        );
+        const catIdx = headers.findIndex(
+          (h) => h.includes("cat") || h.includes("role") || h.includes("type"),
+        );
+        const deptIdx = headers.findIndex(
+          (h) => h.includes("dept") || h.includes("department"),
+        );
+        const qrIdx = headers.findIndex(
+          (h) => h.includes("qr") || h.includes("id"),
+        );
 
-                    if (qrIdx !== -1 && row[qrIdx]) {
-                        participant.qrId = String(row[qrIdx]).trim().toUpperCase();
-                    }
+        // Map the data skipping the header row
+        const cleanedData = rows
+          .slice(1)
+          .map((row) => {
+            const participant = {
+              // Fallback: if no "name" header found, use the first column (index 0)
+              name: nameIdx !== -1 ? row[nameIdx] : row[0],
+              category: catIdx !== -1 ? row[catIdx] : "Participant",
+              department: deptIdx !== -1 ? row[deptIdx] : "N/A",
+            };
 
-                    // Add all other columns to the object so the backend metadata bucket catches them
-                    headers.forEach((header, i) => {
-                        if (header && !['name', 'category', 'department', 'qrid'].includes(header)) {
-                            participant[header] = row[i];
-                        }
-                    });
-
-                    return participant;
-                }).filter(p => p.name); // Final check to ensure we aren't sending empty names
-
-                console.log("Cleaned Data being sent:", cleanedData);
-
-                const res = await api.post('/admin/bulk-upload', cleanedData);
-                showMessage(res.data.message, 'success');
-            } catch (err) {
-                console.error("Upload Error:", err);
-                showMessage(err.response?.data?.message || 'Upload failed. Check file format.', 'error');
-            } finally {
-                setLoading(false);
-                e.target.value = null; 
+            if (qrIdx !== -1 && row[qrIdx]) {
+              participant.qrId = String(row[qrIdx]).trim().toUpperCase();
             }
-        };
-        reader.readAsBinaryString(file);
-    };
 
-    // --- 4. EOD PDF REPORT GENERATION ---
-    const generateStatsPDF = async () => {
-        try {
-            setLoading(true);
-            const res = await api.get('/scans/stats');
-            const stats = res.data.stats;
-            const doc = new jsPDF();
-            
-            doc.setFontSize(22);
-            doc.setTextColor(20, 184, 166); 
-            doc.text("AccessPro - End of Day Report", 14, 20);
-            
-            autoTable(doc, {
-                startY: 40,
-                headStyles: { fillColor: [20, 184, 166] }, 
-                head: [['Meal Category', 'Total Served']],
-                body: [
-                    ['Breakfast', stats.Breakfast || 0],
-                    ['Lunch', stats.Lunch || 0],
-                    ['Snacks', stats.Snacks || 0],
-                    ['Dinner', stats.Dinner || 0],
-                ],
-                foot: [['GRAND TOTAL', res.data.total || 0]],
-                footStyles: { fillColor: [240, 240, 240], textColor: [0,0,0], fontStyle: 'bold' }
+            // Add all other columns to the object so the backend metadata bucket catches them
+            headers.forEach((header, i) => {
+              if (
+                header &&
+                !["name", "category", "department", "qrid"].includes(header)
+              ) {
+                participant[header] = row[i];
+              }
             });
 
-            doc.save(`AccessPro_Report_${new Date().toISOString().split('T')[0]}.pdf`);
-            showMessage('Stats Report downloaded.', 'success');
-        } catch (err) { showMessage('Failed to generate stats.', 'error'); } 
-        finally { setLoading(false); }
+            return participant;
+          })
+          .filter((p) => p.name); // Final check to ensure we aren't sending empty names
+
+        console.log("Cleaned Data being sent:", cleanedData);
+
+        const res = await api.post("/admin/bulk-upload", cleanedData);
+        showMessage(res.data.message, "success");
+      } catch (err) {
+        console.error("Upload Error:", err);
+        showMessage(
+          err.response?.data?.message || "Upload failed. Check file format.",
+          "error",
+        );
+      } finally {
+        setLoading(false);
+        e.target.value = null;
+      }
     };
+    reader.readAsBinaryString(file);
+  };
 
-    // --- 5. BATCH PRINT ID CARDS (A4 GRID) ---
-    const generateQRPDF = async () => {
-        try {
-            setLoading(true);
-            showMessage('Fetching roster and generating codes...', 'success');
-            
-            const res = await api.get('/participants');
-            const participants = res.data;
+  // --- 4. EOD PDF REPORT GENERATION ---
+  const generateStatsPDF = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/scans/stats");
+      const stats = res.data.stats;
+      const doc = new jsPDF();
 
-            if (participants.length === 0) {
-                showMessage('No participants in roster.', 'error');
-                setLoading(false);
-                return;
-            }
+      doc.setFontSize(22);
+      doc.setTextColor(20, 184, 166);
+      doc.text("AccessPro - End of Day Report", 14, 20);
 
-            const doc = new jsPDF('portrait', 'mm', 'a4');
-            const cols = 3;
-            const rows = 4;
-            const marginX = 15;
-            const marginY = 15;
-            const badgeWidth = 55;
-            const badgeHeight = 65;
-            const qrSize = 40;
+      autoTable(doc, {
+        startY: 40,
+        headStyles: { fillColor: [20, 184, 166] },
+        head: [["Meal Category", "Total Served"]],
+        body: [
+          ["Breakfast", stats.Breakfast || 0],
+          ["Lunch", stats.Lunch || 0],
+          ["Snacks", stats.Snacks || 0],
+          ["Dinner", stats.Dinner || 0],
+        ],
+        foot: [["GRAND TOTAL", res.data.total || 0]],
+        footStyles: {
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+        },
+      });
 
-            let currentItem = 0;
+      doc.save(
+        `AccessPro_Report_${new Date().toISOString().split("T")[0]}.pdf`,
+      );
+      showMessage("Stats Report downloaded.", "success");
+    } catch (err) {
+      showMessage("Failed to generate stats.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            for (let i = 0; i < participants.length; i++) {
-                const p = participants[i];
+  // --- 5. BATCH PRINT ID CARDS (A4 GRID) ---
+  const generateQRPDF = async () => {
+    try {
+      setLoading(true);
+      showMessage("Fetching roster and generating codes...", "success");
 
-                if (currentItem > 0 && currentItem % (cols * rows) === 0) {
-                    doc.addPage();
-                    currentItem = 0; 
-                }
+      const res = await api.get("/participants");
+      const participants = res.data;
 
-                const colIndex = currentItem % cols;
-                const rowIndex = Math.floor(currentItem / cols);
-                
-                const x = marginX + (colIndex * (badgeWidth + 10)); 
-                const y = marginY + (rowIndex * (badgeHeight + 5)); 
+      if (participants.length === 0) {
+        showMessage("No participants in roster.", "error");
+        setLoading(false);
+        return;
+      }
 
-                doc.setDrawColor(200);
-                doc.roundedRect(x, y, badgeWidth, badgeHeight, 3, 3);
+      const doc = new jsPDF("portrait", "mm", "a4");
+      const cols = 3;
+      const rows = 4;
+      const marginX = 15;
+      const marginY = 15;
+      const badgeWidth = 55;
+      const badgeHeight = 65;
+      const qrSize = 40;
 
-                if (p.qrId) {
-                    const qrDataUrl = await QRCode.toDataURL(p.qrId, { margin: 1, width: 400 });
-                    const qrXOffset = x + (badgeWidth - qrSize) / 2;
-                    doc.addImage(qrDataUrl, 'PNG', qrXOffset, y + 5, qrSize, qrSize);
-                } else {
-                    doc.setFontSize(10);
-                    doc.setTextColor(150);
-                    doc.text("UNASSIGNED", x + 12, y + 25);
-                }
+      let currentItem = 0;
 
-                doc.setFontSize(10);
-                doc.setTextColor(30);
-                doc.setFont("helvetica", "bold");
-                const shortName = p.name ? (p.name.length > 18 ? p.name.substring(0, 15) + '...' : p.name) : "Unnamed";
-                const textWidth = doc.getTextWidth(shortName);
-                doc.text(shortName, x + (badgeWidth - textWidth) / 2, y + 52);
+      for (let i = 0; i < participants.length; i++) {
+        const p = participants[i];
 
-                doc.setFontSize(8);
-                doc.setTextColor(100);
-                doc.setFont("helvetica", "normal");
-                const subText = `${p.qrId ? p.qrId.split('-')[0] : 'NO BADGE'} • ${p.category}`;
-                const subTextWidth = doc.getTextWidth(subText);
-                doc.text(subText, x + (badgeWidth - subTextWidth) / 2, y + 58);
-
-                currentItem++;
-            }
-
-            doc.save('AccessPro_Printable_Badges.pdf');
-            showMessage('Badge PDF downloaded successfully.', 'success');
-            
-        } catch (err) {
-            console.error(err);
-            showMessage('Failed to generate Badges.', 'error');
-        } finally {
-            setLoading(false);
+        if (currentItem > 0 && currentItem % (cols * rows) === 0) {
+          doc.addPage();
+          currentItem = 0;
         }
-    };
 
-    // --- 6. NUCLEAR PURGE LOGIC ---
-    const executePurge = async () => {
-        if (purgeConfirmText !== 'PURGE') return;
-        setIsPurging(true);
-        try {
-            await api.delete('/admin/purge');
-            showMessage('SYSTEM PURGED. All rosters and scan data wiped.', 'success');
-            setIsPurgeModalOpen(false);
-            setPurgeConfirmText('');
-        } catch (error) {
-            showMessage('Purge failed. Check server logs.', 'error');
-        } finally {
-            setIsPurging(false);
+        const colIndex = currentItem % cols;
+        const rowIndex = Math.floor(currentItem / cols);
+
+        const x = marginX + colIndex * (badgeWidth + 10);
+        const y = marginY + rowIndex * (badgeHeight + 5);
+
+        doc.setDrawColor(200);
+        doc.roundedRect(x, y, badgeWidth, badgeHeight, 3, 3);
+
+        if (p.qrId) {
+          const qrDataUrl = await QRCode.toDataURL(p.qrId, {
+            margin: 1,
+            width: 400,
+          });
+          const qrXOffset = x + (badgeWidth - qrSize) / 2;
+          doc.addImage(qrDataUrl, "PNG", qrXOffset, y + 5, qrSize, qrSize);
+        } else {
+          doc.setFontSize(10);
+          doc.setTextColor(150);
+          doc.text("UNASSIGNED", x + 12, y + 25);
         }
-    };
 
-    const showMessage = (text, type) => {
-        setMessage({ text, type });
-        setTimeout(() => setMessage(null), 4000);
-    };
+        doc.setFontSize(10);
+        doc.setTextColor(30);
+        doc.setFont("helvetica", "bold");
+        const shortName = p.name
+          ? p.name.length > 18
+            ? p.name.substring(0, 15) + "..."
+            : p.name
+          : "Unnamed";
+        const textWidth = doc.getTextWidth(shortName);
+        doc.text(shortName, x + (badgeWidth - textWidth) / 2, y + 52);
 
-    return (
-        <div className="space-y-6 animate-enter w-full max-w-md mx-auto pb-10">
-            {message && (
-                <div className={`p-4 rounded-2xl text-[11px] font-bold text-center backdrop-blur-sm shadow-lg animate-enter border ${message.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-teal-500/10 border-teal-500/30 text-teal-300'}`}>
-                    {message.text}
-                </div>
-            )}
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.setFont("helvetica", "normal");
+        const subText = `${p.qrId ? p.qrId.split("-")[0] : "NO BADGE"} • ${p.category}`;
+        const subTextWidth = doc.getTextWidth(subText);
+        doc.text(subText, x + (badgeWidth - subTextWidth) / 2, y + 58);
 
-            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
-                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-teal-500/20 border border-teal-500/30 rounded-lg flex items-center justify-center">
-                        <i className="ph-bold ph-sliders text-teal-400"></i>
-                    </div>
-                    System Overrides
-                </h3>
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between bg-slate-900/50 border border-white/5 p-4 rounded-2xl">
-                        <span className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest">Lock Scanners</span>
-                        <button onClick={() => handleUpdateSettings('isScannerLocked', !settings.isScannerLocked)} className={`w-12 h-6 rounded-full relative transition-all ${settings.isScannerLocked ? 'bg-red-500' : 'bg-slate-700'}`}>
-                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${settings.isScannerLocked ? 'left-7' : 'left-1'}`}></div>
-                        </button>
-                    </div>
-                    <div className="flex flex-col bg-slate-900/50 border border-white/5 p-4 rounded-2xl">
-                        <span className="text-[10px] font-black text-teal-200/70 uppercase mb-3">Force Active Meal</span>
-                        <select value={settings.activeMeal} onChange={(e) => handleUpdateSettings('activeMeal', e.target.value)} className="bg-slate-800 text-white font-bold py-3 px-4 rounded-xl border border-white/10 outline-none">
-                            <option value="Breakfast">Breakfast</option>
-                            <option value="Lunch">Lunch</option>
-                            <option value="Snacks">Snacks</option>
-                            <option value="Dinner">Dinner</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
+        currentItem++;
+      }
 
-            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
-                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-500/20 border border-blue-500/30 rounded-lg flex items-center justify-center">
-                        <i className="ph-bold ph-database text-blue-400"></i>
-                    </div>
-                    Data Center
-                </h3>
-                <div className="grid grid-cols-3 gap-3">
-                    <label className="relative flex flex-col items-center justify-center py-5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-2xl cursor-pointer border border-emerald-500/30 group">
-                        <i className="ph-duotone ph-file-xls text-3xl text-emerald-400 mb-2 group-hover:scale-110 transition-transform"></i>
-                        <span className="text-[9px] font-black text-emerald-300/80 uppercase">Upload</span>
-                        <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleFileUpload} disabled={loading} />
-                    </label>
-                    <button onClick={generateStatsPDF} disabled={loading} className="flex flex-col items-center justify-center py-5 bg-blue-500/10 hover:bg-blue-500/20 rounded-2xl border border-blue-500/30 group">
-                        <i className="ph-duotone ph-file-pdf text-3xl text-blue-400 mb-2 group-hover:scale-110 transition-transform"></i>
-                        <span className="text-[9px] font-black text-blue-300/80 uppercase">Report</span>
-                    </button>
-                    <button onClick={generateQRPDF} disabled={loading} className="flex flex-col items-center justify-center py-5 bg-teal-500/10 hover:bg-teal-500/20 rounded-2xl border border-teal-500/30 group">
-                        <i className="ph-duotone ph-printer text-3xl text-teal-400 mb-2 group-hover:scale-110 transition-transform"></i>
-                        <span className="text-[9px] font-black text-teal-300/80 uppercase tracking-widest">Print IDs</span>
-                    </button>
-                </div>
-            </div>
+      doc.save("AccessPro_Printable_Badges.pdf");
+      showMessage("Badge PDF downloaded successfully.", "success");
+    } catch (err) {
+      console.error(err);
+      showMessage("Failed to generate Badges.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem]">
-                <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-purple-500/20 border border-purple-500/30 rounded-lg flex items-center justify-center">
-                        <i className="ph-bold ph-shield-check text-purple-400"></i>
-                    </div>
-                    Staff Access
-                </h3>
-                <div className="space-y-3 max-h-60 overflow-y-auto no-scrollbar">
-                    {users.map(u => (
-                        <div key={u._id} className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between">
-                            <p className="text-xs font-bold text-slate-300 truncate mr-2">{u.email}</p>
-                            <select value={u.role} onChange={(e) => handleRoleChange(u._id, e.target.value)} className={`text-[9px] font-black uppercase rounded-xl px-3 py-2 outline-none appearance-none ${u.role === 'admin' ? 'text-purple-300' : 'text-teal-300'}`}>
-                                <option value="pending">Pending</option>
-                                <option value="volunteer">Volunteer</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                        </div>
-                    ))}
-                </div>
-            </div>
+  // --- 6. NUCLEAR PURGE LOGIC ---
+  const executePurge = async () => {
+    if (purgeConfirmText !== "PURGE") return;
+    setIsPurging(true);
+    try {
+      await api.delete("/admin/purge");
+      showMessage("SYSTEM PURGED. All rosters and scan data wiped.", "success");
+      setIsPurgeModalOpen(false);
+      setPurgeConfirmText("");
+    } catch (error) {
+      showMessage("Purge failed. Check server logs.", "error");
+    } finally {
+      setIsPurging(false);
+    }
+  };
 
-            <div className="bg-rose-950/20 border border-rose-500/30 p-6 rounded-[2rem] mt-8">
-                <h3 className="font-black text-rose-500 text-lg mb-2 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-rose-500/20 border border-rose-500/50 rounded-lg flex items-center justify-center">
-                        <i className="ph-bold ph-warning-octagon text-rose-400"></i>
-                    </div>
-                    Danger Zone
-                </h3>
-                <button onClick={() => setIsPurgeModalOpen(true)} className="w-full mt-4 py-4 bg-rose-500 text-white font-black uppercase text-[10px] rounded-xl">Purge Database</button>
-            </div>
+  const showMessage = (text, type) => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 4000);
+  };
 
-            {isPurgeModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 p-4">
-                    <div className="bg-slate-900 border border-rose-500/50 w-full max-w-sm rounded-[2.5rem] p-8 text-center">
-                        <h3 className="text-2xl font-black text-white mb-2">Confirm Purge</h3>
-                        <input type="text" value={purgeConfirmText} onChange={(e) => setPurgeConfirmText(e.target.value)} className="w-full bg-black/50 border border-rose-500/30 rounded-xl py-4 text-center text-white focus:outline-none mb-6 uppercase" placeholder="PURGE" />
-                        <div className="flex gap-3">
-                            <button onClick={() => setIsPurgeModalOpen(false)} className="flex-1 py-4 bg-white/5 text-slate-400 font-black rounded-xl">Cancel</button>
-                            <button onClick={executePurge} disabled={purgeConfirmText !== 'PURGE' || isPurging} className="flex-1 py-4 bg-rose-500 text-white font-black rounded-xl">Destroy</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+  return (
+    <div className="space-y-6 animate-enter w-full max-w-md mx-auto pb-10">
+      {message && (
+        <div
+          className={`p-4 rounded-2xl text-[11px] font-bold text-center backdrop-blur-sm shadow-lg animate-enter border ${message.type === "error" ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-teal-500/10 border-teal-500/30 text-teal-300"}`}
+        >
+          {message.text}
         </div>
-    );
+      )}
+
+      <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
+        <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3">
+          <div className="w-8 h-8 bg-teal-500/20 border border-teal-500/30 rounded-lg flex items-center justify-center">
+            <i className="ph-bold ph-sliders text-teal-400"></i>
+          </div>
+          System Overrides
+        </h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between bg-slate-900/50 border border-white/5 p-4 rounded-2xl">
+            <span className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest">
+              Lock Scanners
+            </span>
+            <button
+              onClick={() =>
+                handleUpdateSettings(
+                  "isScannerLocked",
+                  !settings.isScannerLocked,
+                )
+              }
+              className={`w-12 h-6 rounded-full relative transition-all ${settings.isScannerLocked ? "bg-red-500" : "bg-slate-700"}`}
+            >
+              <div
+                className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${settings.isScannerLocked ? "left-7" : "left-1"}`}
+              ></div>
+            </button>
+          </div>
+          <div className="flex flex-col bg-slate-900/50 border border-white/5 p-4 rounded-2xl">
+            <span className="text-[10px] font-black text-teal-200/70 uppercase mb-3">
+              Force Active Meal
+            </span>
+            <select
+              value={settings.activeMeal}
+              onChange={(e) =>
+                handleUpdateSettings("activeMeal", e.target.value)
+              }
+              className="bg-slate-800 text-white font-bold py-3 px-4 rounded-xl border border-white/10 outline-none"
+            >
+              <option value="Breakfast">Breakfast</option>
+              <option value="Lunch">Lunch</option>
+              <option value="Snacks">Snacks</option>
+              <option value="Dinner">Dinner</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
+        <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3">
+          <div className="w-8 h-8 bg-blue-500/20 border border-blue-500/30 rounded-lg flex items-center justify-center">
+            <i className="ph-bold ph-database text-blue-400"></i>
+          </div>
+          Data Center
+        </h3>
+        <div className="grid grid-cols-3 gap-3">
+          <label className="relative flex flex-col items-center justify-center py-5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-2xl cursor-pointer border border-emerald-500/30 group">
+            <i className="ph-duotone ph-file-xls text-3xl text-emerald-400 mb-2 group-hover:scale-110 transition-transform"></i>
+            <span className="text-[9px] font-black text-emerald-300/80 uppercase">
+              Upload
+            </span>
+            <input
+              type="file"
+              accept=".xlsx, .xls, .csv"
+              className="hidden"
+              onChange={handleFileUpload}
+              disabled={loading}
+            />
+          </label>
+          <button
+            onClick={generateStatsPDF}
+            disabled={loading}
+            className="flex flex-col items-center justify-center py-5 bg-blue-500/10 hover:bg-blue-500/20 rounded-2xl border border-blue-500/30 group"
+          >
+            <i className="ph-duotone ph-file-pdf text-3xl text-blue-400 mb-2 group-hover:scale-110 transition-transform"></i>
+            <span className="text-[9px] font-black text-blue-300/80 uppercase">
+              Report
+            </span>
+          </button>
+          <button
+            onClick={generateQRPDF}
+            disabled={loading}
+            className="flex flex-col items-center justify-center py-5 bg-teal-500/10 hover:bg-teal-500/20 rounded-2xl border border-teal-500/30 group"
+          >
+            <i className="ph-duotone ph-printer text-3xl text-teal-400 mb-2 group-hover:scale-110 transition-transform"></i>
+            <span className="text-[9px] font-black text-teal-300/80 uppercase tracking-widest">
+              Print IDs
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem]">
+        <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3">
+          <div className="w-8 h-8 bg-purple-500/20 border border-purple-500/30 rounded-lg flex items-center justify-center">
+            <i className="ph-bold ph-shield-check text-purple-400"></i>
+          </div>
+          Staff Access
+        </h3>
+        <div className="space-y-3 max-h-60 overflow-y-auto no-scrollbar">
+          {users.map((u) => (
+            <div
+              key={u._id}
+              className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between"
+            >
+              <p className="text-xs font-bold text-slate-300 truncate mr-2">
+                {u.email}
+              </p>
+              <select
+                value={u.role}
+                onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                className={`text-[9px] font-black uppercase rounded-xl px-3 py-2 outline-none appearance-none ${u.role === "admin" ? "text-purple-300" : "text-teal-300"}`}
+              >
+                <option value="pending">Pending</option>
+                <option value="volunteer">Volunteer</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-rose-950/20 border border-rose-500/30 p-6 rounded-[2rem] mt-8">
+        <h3 className="font-black text-rose-500 text-lg mb-2 flex items-center gap-3">
+          <div className="w-8 h-8 bg-rose-500/20 border border-rose-500/50 rounded-lg flex items-center justify-center">
+            <i className="ph-bold ph-warning-octagon text-rose-400"></i>
+          </div>
+          Danger Zone
+        </h3>
+        <button
+          onClick={() => setIsPurgeModalOpen(true)}
+          className="w-full mt-4 py-4 bg-rose-500 text-white font-black uppercase text-[10px] rounded-xl"
+        >
+          Purge Database
+        </button>
+      </div>
+
+      {isPurgeModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 p-4">
+          <div className="bg-slate-900 border border-rose-500/50 w-full max-w-sm rounded-[2.5rem] p-8 text-center">
+            <h3 className="text-2xl font-black text-white mb-2">
+              Confirm Purge
+            </h3>
+            <input
+              type="text"
+              value={purgeConfirmText}
+              onChange={(e) => setPurgeConfirmText(e.target.value)}
+              className="w-full bg-black/50 border border-rose-500/30 rounded-xl py-4 text-center text-white focus:outline-none mb-6 uppercase"
+              placeholder="PURGE"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsPurgeModalOpen(false)}
+                className="flex-1 py-4 bg-white/5 text-slate-400 font-black rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executePurge}
+                disabled={purgeConfirmText !== "PURGE" || isPurging}
+                className="flex-1 py-4 bg-rose-500 text-white font-black rounded-xl"
+              >
+                Destroy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default CommandCenter;
