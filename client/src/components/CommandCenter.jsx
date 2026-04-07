@@ -331,98 +331,95 @@ const CommandCenter = () => {
     }
   };
 
-  // --- 🚀 NEW: DYNAMIC ANONYMOUS PRINTING W/ EMBEDDED LOGO ---
-  const generateQRPDF = async () => {
-    const count = parseInt(mintCount);
-    if (!count || count < 1)
-      return showMessage("Please enter a valid number.", "error");
+  // --- 🌸 NEW: WARM & WELCOMING ANONYMOUS BADGES ---
+    const generateQRPDF = async () => {
+        const count = parseInt(mintCount);
+        if (!count || count < 1) return showMessage('Please enter a valid number.', 'error');
+        
+        setIsMintModalOpen(false); // Close the modal immediately
 
-    setIsMintModalOpen(false); // Close the modal immediately
+        try {
+            setLoading(true);
+            showMessage(`Preparing ${count} welcome badges...`, 'success');
+            
+            const res = await api.get(`/admin/generate-badges?count=${count}`);
+            const badges = res.data.badges;
 
-    try {
-      setLoading(true);
-      showMessage(`Minting ${count} secure anonymous badges...`, "success");
+            if (!badges || badges.length === 0) return showMessage('Failed to create badges.', 'error');
 
-      const res = await api.get(`/admin/generate-badges?count=${count}`);
-      const badges = res.data.badges;
+            const doc = new jsPDF('portrait', 'mm', 'a4');
+            
+            // Perfect A4 Grid Math
+            const cols = 3, rows = 4;
+            const cardW = 50, cardH = 60;
+            const gapX = 10, gapY = 10;
+            const marginX = 20, marginY = 13.5; 
+            const qrSize = 40;
 
-      if (!badges || badges.length === 0)
-        return showMessage("Failed to mint badges.", "error");
+            let currentItem = 0;
 
-      const doc = new jsPDF("portrait", "mm", "a4");
+            for (let i = 0; i < badges.length; i++) {
+                const qrString = badges[i]; 
 
-      // Perfect A4 Grid Math
-      const cols = 3,
-        rows = 4;
-      const cardW = 50,
-        cardH = 60;
-      const gapX = 10,
-        gapY = 10;
-      const marginX = 20,
-        marginY = 13.5;
-      const qrSize = 40;
+                if (currentItem > 0 && currentItem % (cols * rows) === 0) { doc.addPage(); currentItem = 0; }
 
-      let currentItem = 0;
+                const colIndex = currentItem % cols;
+                const rowIndex = Math.floor(currentItem / cols);
 
-      for (let i = 0; i < badges.length; i++) {
-        const qrString = badges[i];
+                const x = marginX + (colIndex * (cardW + gapX)); 
+                const y = marginY + (rowIndex * (cardH + gapY)); 
 
-        if (currentItem > 0 && currentItem % (cols * rows) === 0) {
-          doc.addPage();
-          currentItem = 0;
+                // 1. Draw Card Outline (Soft gray)
+                doc.setDrawColor(220);
+                doc.roundedRect(x, y, cardW, cardH, 4, 4);
+
+                // 2. Generate QR with HIGH Error Correction
+                const qrDataUrl = await QRCode.toDataURL(qrString, { 
+                    margin: 0, 
+                    width: 400, 
+                    errorCorrectionLevel: 'H',
+                    color: { dark: '#4A4A4A', light: '#FFFFFF' } // Softer dark gray instead of harsh black
+                });
+                
+                const qrX = x + (cardW - qrSize) / 2;
+                const qrY = y + 5;
+                doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+
+                // 3. Punch a white hole in the center of the QR code
+                const centerX = x + (cardW / 2);
+                const centerY = qrY + (qrSize / 2);
+                doc.setFillColor(255, 255, 255);
+                doc.rect(centerX - 4.5, centerY - 4.5, 9, 9, 'F'); 
+
+                // 4. Draw a soft, warm Sage Green circle with a tiny heart
+                doc.setFillColor(139, 168, 136); // Calming Sage Green
+                doc.circle(centerX, centerY, 3.5, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(7);
+                doc.setFont("helvetica", "normal");
+                doc.text("♥", centerX, centerY + 2.2, { align: "center" });
+
+                // 5. Heart-warming Tagline
+                doc.setFontSize(8); 
+                doc.setTextColor(100, 100, 100); // Soft charcoal
+                doc.setFont("helvetica", "bold");
+                doc.text("EVENT & MEAL PASS", centerX, y + 51, { align: "center" });
+                
+                doc.setFontSize(6); 
+                doc.setTextColor(160, 160, 160); // Gentle light gray
+                doc.setFont("helvetica", "italic");
+                doc.text("We're so glad you're here", centerX, y + 55, { align: "center" });
+                
+                currentItem++;
+            }
+            doc.save(`Welcome_Badges_${count}.pdf`);
+            showMessage(`Successfully created ${count} badges.`, 'success');
+        } catch (err) { 
+            showMessage('Generation failed.', 'error'); 
+        } finally { 
+            setLoading(false); 
         }
-
-        const colIndex = currentItem % cols;
-        const rowIndex = Math.floor(currentItem / cols);
-
-        const x = marginX + colIndex * (cardW + gapX);
-        const y = marginY + rowIndex * (cardH + gapY);
-
-        // 1. Draw Card Outline
-        doc.setDrawColor(200);
-        doc.roundedRect(x, y, cardW, cardH, 3, 3);
-
-        // 2. Generate QR with HIGH Error Correction (allows us to put a logo in the middle)
-        const qrDataUrl = await QRCode.toDataURL(qrString, {
-          margin: 0,
-          width: 400,
-          errorCorrectionLevel: "H",
-        });
-        const qrX = x + (cardW - qrSize) / 2;
-        const qrY = y + 6;
-        doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
-
-        // 3. Punch a white hole in the center of the QR code
-        const centerX = x + cardW / 2;
-        const centerY = qrY + qrSize / 2;
-        doc.setFillColor(255, 255, 255);
-        doc.rect(centerX - 4.5, centerY - 4.5, 9, 9, "F"); // 9x9mm white square
-
-        // 4. Draw the Teal AccessPro Icon inside the hole
-        doc.setFillColor(20, 184, 166);
-        doc.circle(centerX, centerY, 3.5, "F");
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(6);
-        doc.setFont("helvetica", "bold");
-        doc.text("AP", centerX, centerY + 2.1, { align: "center" });
-
-        // 5. Print just the Short ID below it
-        doc.setFontSize(8);
-        doc.setTextColor(80);
-        doc.setFont("helvetica", "bold");
-        const shortId = qrString.split("-")[0];
-        doc.text(`ID: ${shortId}`, centerX, y + 54, { align: "center" });
-
-        currentItem++;
-      }
-      doc.save(`AccessPro_Blank_Badges_${count}.pdf`);
-      showMessage(`Successfully downloaded ${count} badges.`, "success");
-    } catch (err) {
-      showMessage("Generation failed.", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   const executePurge = async () => {
     if (purgeConfirmText !== "PURGE") return;
