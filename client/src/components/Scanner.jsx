@@ -1,263 +1,268 @@
-import { useState, useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
-import api from '../api/axios';
+import { useState, useEffect, useRef } from "react";
+import { Html5Qrcode } from "html5-qrcode";
+import api from "../api/axios";
 
 const Scanner = () => {
-    const [isScanning, setIsScanning] = useState(false);
-    const [scanResult, setScanResult] = useState(null);
-    const [config, setConfig] = useState({ activeMeal: 'Lunch', isScannerLocked: false });
-    const [loadingConfig, setLoadingConfig] = useState(true);
-    const scannerRef = useRef(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
+  const scannerRef = useRef(null);
 
-    useEffect(() => {
-        const fetchConfig = async () => {
-            try {
-                const res = await api.get('/scans/config');
-                setConfig(res.data);
-            } catch (err) {
-                console.error("Failed to fetch scanner config", err);
-            } finally {
-                setLoadingConfig(false);
-            }
-        };
-        fetchConfig();
-    }, []);
-
-    const startScanner = async () => {
-        if (config.isScannerLocked) return; 
-        
-        setIsScanning(true);
-        setScanResult(null);
-        
-        try {
-            scannerRef.current = new Html5Qrcode("reader");
-            await scannerRef.current.start(
-                { facingMode: "environment" },
-                { fps: 15 }, // Edge-to-edge scanning
-                onScanSuccess,
-                onScanFailure
-            );
-        } catch (err) {
-            console.error("Camera Start Error:", err);
-            setScanResult({ type: 'error', title: 'Hardware Error', message: 'Could not access the camera lens.' });
-            setIsScanning(false);
-        }
-    };
-
-    const stopScanner = async () => {
-        if (scannerRef.current && isScanning) {
-            try { await scannerRef.current.stop(); scannerRef.current.clear(); } 
-            catch (err) { console.error("Stop error", err); }
-        }
-        setIsScanning(false);
-        scannerRef.current = null;
-    };
-
-    const onScanSuccess = async (decodedText) => {
-        if (scannerRef.current) scannerRef.current.pause();
-
-        try {
-            let payload = {};
-            try {
-                const parsedData = JSON.parse(decodedText);
-                payload = { qrId: parsedData.qrId, totp: parsedData.totp, mealType: config.activeMeal };
-            } catch (e) {
-                payload = { qrId: decodedText.trim().toUpperCase(), mealType: config.activeMeal };
-            }
-            
-            const response = await api.post('/scans/verify', payload);
-
-            setScanResult({
-                type: 'success',
-                title: 'Access Approved',
-                message: response.data.message,
-                participant: response.data.participant
-            });
-
-        } catch (error) {
-            const errorMsg = error.response?.data?.message || "Unrecognized signature";
-            setScanResult({
-                type: 'error',
-                title: error.response?.status === 409 ? 'Already Scanned' : 'Access Denied',
-                message: errorMsg,
-                participant: error.response?.data?.participant
-            });
-        }
-    };
-
-    const onScanFailure = () => { /* Ignore empty frames */ };
-
-    const closeResult = () => {
-        setScanResult(null);
-        if (scannerRef.current && isScanning) scannerRef.current.resume();
-    };
-
-    if (loadingConfig) {
-        return (
-            <div className="flex flex-col items-center justify-center h-[60vh] w-full max-w-md mx-auto space-y-4">
-                <div className="w-8 h-8 border-2 border-white/10 border-t-teal-400 rounded-full animate-spin"></div>
-            </div>
-        );
+  const startScanner = async () => {
+    setIsScanning(true);
+    setScanResult(null);
+    try {
+      scannerRef.current = new Html5Qrcode("reader");
+      await scannerRef.current.start(
+        { facingMode: "environment" },
+        { fps: 15, qrbox: { width: 250, height: 250 } }, // Forces a square scan box internally
+        onScanSuccess,
+        () => {},
+      );
+    } catch (err) {
+      console.error("Camera Start Error:", err);
     }
+  };
 
-    if (config.isScannerLocked) {
-        return (
-            <div className="flex flex-col items-center justify-center h-[60vh] bg-slate-900/50 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 text-center w-full max-w-md mx-auto shadow-2xl">
-                <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6 shadow-inner border border-white/5">
-                    <i className="ph-light ph-lock-key text-3xl text-slate-400"></i>
-                </div>
-                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Terminal Locked</h3>
-                <p className="text-sm text-slate-500 font-light">Scanning is currently paused by the administrator.</p>
-            </div>
-        );
+  const onScanSuccess = async (decodedText) => {
+    if (scannerRef.current) scannerRef.current.pause(true); // Pause the camera feed, don't just stop scanning
+    try {
+      const response = await api.post("/scans/verify", {
+        qrId: decodedText.trim(),
+        mealType: "Lunch",
+      });
+      setScanResult({
+        type: "success",
+        title: "ACCESS GRANTED",
+        message: response.data.message,
+        participant: response.data.participant,
+      });
+    } catch (error) {
+      setScanResult({
+        type: "error",
+        title: "ACCESS DENIED",
+        message: error.response?.data?.message || "Invalid Token",
+        participant: error.response?.data?.participant,
+      });
     }
+  };
 
-    return (
-        <div className="w-full max-w-md mx-auto relative z-20 pb-10 space-y-6">
-            
-            {/* 🎨 INLINE CSS FOR THE LASER ANIMATION */}
-            <style>{`
-                @keyframes laserSweep {
-                    0% { top: 10%; opacity: 0.2; }
-                    50% { opacity: 1; }
-                    100% { top: 90%; opacity: 0.2; }
+  const closeResult = () => {
+    setScanResult(null);
+    if (scannerRef.current && isScanning) scannerRef.current.resume();
+  };
+
+  // Cleanup camera on component unmount
+  useEffect(() => {
+    return () => {
+      if (scannerRef.current && isScanning) {
+        scannerRef.current.stop().catch(console.error);
+      }
+    };
+  }, [isScanning]);
+
+  return (
+    <div className="w-full max-w-md mx-auto h-full flex flex-col relative z-20 pb-20">
+      {/* 🚀 INJECTED CRAZY ANIMATIONS */}
+      <style>{`
+                @keyframes scan-laser {
+                    0% { top: 0%; opacity: 0; box-shadow: 0 0 0px rgba(20,184,166,0); }
+                    10% { opacity: 1; box-shadow: 0 0 20px rgba(20,184,166,0.8); }
+                    50% { top: 100%; opacity: 1; box-shadow: 0 0 20px rgba(20,184,166,0.8); }
+                    90% { opacity: 1; box-shadow: 0 0 20px rgba(20,184,166,0.8); }
+                    100% { top: 0%; opacity: 0; box-shadow: 0 0 0px rgba(20,184,166,0); }
                 }
-                .scanner-laser {
-                    animation: laserSweep 2.5s ease-in-out infinite alternate;
-                    background: linear-gradient(to right, transparent, #2dd4bf, transparent);
-                    height: 2px;
-                    box-shadow: 0 0 15px #2dd4bf;
+                .laser-beam {
+                    animation: scan-laser 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
                 }
+                
+                @keyframes breathe {
+                    0%, 100% { transform: scale(1); opacity: 0.8; border-color: rgba(20,184,166,0.5); }
+                    50% { transform: scale(1.05); opacity: 1; border-color: rgba(20,184,166,1); }
+                }
+                .reticle-breathe {
+                    animation: breathe 3s ease-in-out infinite;
+                }
+
+                @keyframes glitch-shake {
+                    0% { transform: translate(0) }
+                    20% { transform: translate(-3px, 3px) }
+                    40% { transform: translate(-3px, -3px) }
+                    60% { transform: translate(3px, 3px) }
+                    80% { transform: translate(3px, -3px) }
+                    100% { transform: translate(0) }
+                }
+                .glitch-effect {
+                    animation: glitch-shake 0.3s cubic-bezier(.25,.8,.25,1) both;
+                }
+
+                @keyframes hologram-slide {
+                    0% { transform: translateY(20px) scale(0.95); opacity: 0; filter: blur(10px); }
+                    100% { transform: translateY(0) scale(1); opacity: 1; filter: blur(0px); }
+                }
+                .hologram-item {
+                    animation: hologram-slide 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    opacity: 0; /* Starts hidden until animation plays */
+                }
+
+                /* Hide the ugly default HTML5-QRCode styling */
+                #reader img { display: none !important; }
+                #reader { border: none !important; }
             `}</style>
 
-            {/* Elegant Glass Header */}
-            <div className="bg-slate-900/60 backdrop-blur-xl rounded-[2rem] p-5 flex items-center justify-between border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center border border-white/10 shadow-inner">
-                        <i className="ph-light ph-aperture text-2xl text-teal-400"></i>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-slate-400 font-semibold tracking-[0.2em] uppercase mb-1">Active Queue</p>
-                        <p className="text-lg font-light text-white tracking-wide">{config.activeMeal}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-teal-500/10 rounded-full border border-teal-500/20 shadow-inner">
-                    <div className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(45,212,191,1)]"></div>
-                    <span className="text-[10px] font-semibold tracking-widest text-teal-400 uppercase">Live</span>
-                </div>
+      <div className="text-center pt-6 pb-4">
+        <h2 className="text-xl font-black text-white tracking-[0.2em] uppercase">
+          Security Uplink
+        </h2>
+        <p className="text-[10px] text-teal-400 font-bold uppercase tracking-widest mt-1 animate-pulse">
+          Awaiting Token
+        </p>
+      </div>
+
+      {/* 🛡️ THE CYBER-SCANNER VIEWPORT */}
+      <div className="relative w-[90%] mx-auto aspect-[4/5] bg-black/50 backdrop-blur-sm rounded-[2.5rem] mt-4 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden border border-white/5 flex-shrink-0">
+        {/* The actual camera feed */}
+        <div
+          id="reader"
+          className="w-full h-full object-cover absolute inset-0 z-0 scale-105"
+        ></div>
+
+        {/* THE OVERLAY UI (Only shows when scanning) */}
+        {isScanning && !scanResult && (
+          <div className="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between">
+            {/* Radar Ping Effect in Background */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-32 h-32 border border-teal-500/20 rounded-full animate-ping duration-[3000ms]"></div>
+              <div className="absolute w-64 h-64 border border-teal-500/10 rounded-full animate-ping duration-[4000ms]"></div>
             </div>
 
-            {/* 📸 COMPACT SQUARE CAMERA VIEWPORT */}
-            <div className="relative w-[85%] max-w-[320px] mx-auto aspect-square bg-slate-950 rounded-[2rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 ring-1 ring-white/5 mt-8">
-                
-                {/* The Video Feed */}
-                <div id="reader" className="w-full h-full object-cover"></div>
-
-                {/* 🔴 THE LASER SCANNER EFFECT */}
-                {isScanning && (
-                    <>
-                        <div className="absolute left-6 right-6 scanner-laser z-20 pointer-events-none"></div>
-                        
-                        {/* Elegant Corner Reticles (Tighter for square box) */}
-                        <div className="absolute top-6 left-6 w-10 h-10 border-t-2 border-l-2 border-white/30 rounded-tl-2xl z-10 pointer-events-none transition-all duration-300"></div>
-                        <div className="absolute top-6 right-6 w-10 h-10 border-t-2 border-r-2 border-white/30 rounded-tr-2xl z-10 pointer-events-none transition-all duration-300"></div>
-                        <div className="absolute bottom-6 left-6 w-10 h-10 border-b-2 border-l-2 border-white/30 rounded-bl-2xl z-10 pointer-events-none transition-all duration-300"></div>
-                        <div className="absolute bottom-6 right-6 w-10 h-10 border-b-2 border-r-2 border-white/30 rounded-br-2xl z-10 pointer-events-none transition-all duration-300"></div>
-                    </>
-                )}
-                
-                {/* Elegant Inactive Overlay */}
-                {!isScanning && (
-                    <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-900/80 backdrop-blur-md">
-                        <button 
-                            onClick={startScanner} 
-                            className="group flex flex-col items-center outline-none"
-                        >
-                            <div className="w-20 h-20 bg-white/5 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/10 transition-all duration-500 group-hover:scale-105 group-hover:bg-white/10 active:scale-95 shadow-[0_0_40px_rgba(0,0,0,0.3)]">
-                                <i className="ph-light ph-camera text-3xl text-teal-400/80 group-hover:text-teal-300 transition-colors"></i>
-                            </div>
-                            <span className="mt-5 text-[10px] font-semibold tracking-[0.25em] text-slate-300 uppercase transition-colors group-hover:text-white">
-                                Activate Lens
-                            </span>
-                        </button>
-                    </div>
-                )}
+            {/* Animated Targeting Reticles */}
+            <div className="absolute inset-6 reticle-breathe">
+              <div className="absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 border-teal-500 rounded-tl-2xl shadow-[0_0_15px_rgba(20,184,166,0.5)]"></div>
+              <div className="absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 border-teal-500 rounded-tr-2xl shadow-[0_0_15px_rgba(20,184,166,0.5)]"></div>
+              <div className="absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 border-teal-500 rounded-bl-2xl shadow-[0_0_15px_rgba(20,184,166,0.5)]"></div>
+              <div className="absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 border-teal-500 rounded-br-2xl shadow-[0_0_15px_rgba(20,184,166,0.5)]"></div>
             </div>
 
-            {/* Refined Stop Button (Moved OUTSIDE the camera box so it doesn't block the view) */}
-            {isScanning && (
-                <div className="flex justify-center mt-6">
-                    <button 
-                        onClick={stopScanner} 
-                        className="bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white/90 px-8 py-4 rounded-full text-[10px] font-semibold tracking-widest uppercase flex items-center gap-3 hover:bg-rose-500/90 hover:border-rose-500 hover:text-white active:scale-95 transition-all shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
-                    >
-                        <div className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-pulse"></div>
-                        Close Lens
-                    </button>
+            {/* Sweeping Laser Beam */}
+            <div className="absolute left-6 right-6 h-[2px] bg-teal-400 laser-beam shadow-[0_0_20px_#2dd4bf] z-20"></div>
+
+            <div className="absolute bottom-8 left-0 right-0 text-center">
+              <span className="bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] text-teal-400 border border-teal-500/30">
+                Align Badge in Frame
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* START BUTTON (Shows when camera is off) */}
+        {!isScanning && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-md">
+            <div className="w-24 h-24 bg-teal-500/10 rounded-full flex items-center justify-center mb-6 border border-teal-500/30 shadow-[0_0_30px_rgba(20,184,166,0.2)]">
+              <i className="ph-duotone ph-scan text-5xl text-teal-400"></i>
+            </div>
+            <button
+              onClick={startScanner}
+              className="bg-teal-500 hover:bg-teal-400 text-white px-8 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(20,184,166,0.4)] active:scale-95 transition-all"
+            >
+              Activate Optics
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 💎 THE HOLOGRAPHIC RESULT OVERLAY */}
+      {scanResult && (
+        <div className="absolute inset-0 z-50 flex flex-col justify-end p-4 animate-enter bg-black/60 backdrop-blur-sm">
+          <div
+            className={`w-full max-w-md mx-auto rounded-[2.5rem] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden ${scanResult.type === "success" ? "bg-slate-900 border border-emerald-500/50" : "bg-rose-950/90 border border-rose-500/50 glitch-effect"}`}
+          >
+            {/* Background Ambient Glow */}
+            <div
+              className={`absolute -top-20 -left-20 w-40 h-40 blur-[80px] rounded-full pointer-events-none ${scanResult.type === "success" ? "bg-emerald-500/30" : "bg-rose-500/30"}`}
+            ></div>
+
+            <div className="relative z-10">
+              {/* Icon & Title */}
+              <div
+                className="flex items-center gap-4 mb-6 hologram-item"
+                style={{ animationDelay: "0ms" }}
+              >
+                <div
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border shadow-inner ${scanResult.type === "success" ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]" : "bg-rose-500/20 border-rose-500/50 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]"}`}
+                >
+                  <i
+                    className={`ph-fill text-2xl ${scanResult.type === "success" ? "ph-shield-check" : "ph-shield-warning"}`}
+                  ></i>
                 </div>
-            )}
+                <div>
+                  <h2
+                    className={`text-xl font-black tracking-[0.1em] ${scanResult.type === "success" ? "text-emerald-400" : "text-rose-400"}`}
+                  >
+                    {scanResult.title}
+                  </h2>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                    {scanResult.message}
+                  </p>
+                </div>
+              </div>
 
-            {/* 💎 Elegant Result Modal */}
-            {scanResult && (
-                <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-slate-950/40 backdrop-blur-lg pb-6 px-4 animate-enter overflow-y-auto">
-                    <div className="w-full h-full absolute inset-0 cursor-pointer" onClick={closeResult}></div>
-                    
-                    <div className="relative w-full max-w-md mx-auto bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden p-8 flex flex-col items-center my-auto max-h-[90vh] overflow-y-auto no-scrollbar">
-                        
-                        {/* Soft Glow Behind Icon */}
-                        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-48 h-32 blur-[60px] pointer-events-none rounded-full ${scanResult.type === 'success' ? 'bg-teal-500/20' : 'bg-rose-500/20'}`}></div>
+              {/* Main Identity Box */}
+              <div
+                className="bg-black/50 border border-white/5 rounded-[1.5rem] p-5 mb-5 hologram-item"
+                style={{ animationDelay: "100ms" }}
+              >
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">
+                  Identified Entity
+                </span>
+                <p className="text-white text-2xl font-black tracking-tight truncate">
+                  {scanResult.participant?.name || "UNKNOWN_ID"}
+                </p>
+                {scanResult.participant?.category && (
+                  <span className="inline-block mt-2 px-3 py-1 bg-white/10 rounded-md text-[9px] font-black uppercase tracking-widest text-slate-300">
+                    CLASS: {scanResult.participant.category}
+                  </span>
+                )}
+              </div>
 
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 border relative z-10 shadow-inner shrink-0 ${scanResult.type === 'success' ? 'bg-teal-500/10 border-teal-500/20 text-teal-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
-                            <i className={`ph-light text-4xl ${scanResult.type === 'success' ? 'ph-check' : 'ph-x'}`}></i>
-                        </div>
-
-                        <h2 className="text-2xl font-light text-white mb-2 tracking-wide relative z-10 text-center">
-                            {scanResult.title}
-                        </h2>
-                        <p className="text-sm text-slate-400 font-light mb-8 text-center relative z-10">
-                            {scanResult.message}
-                        </p>
-
-                        <div className="w-full bg-black/20 rounded-[1.5rem] p-5 border border-white/5 mb-8 shadow-inner relative z-10 text-center">
-                            <p className="text-[9px] text-slate-500 font-semibold tracking-[0.2em] uppercase mb-2">Participant ID</p>
-                            <p className="text-2xl font-light text-white truncate tracking-wide">
-                                {scanResult.participant?.name || 'Unknown User'}
-                            </p>
-                            {scanResult.participant?.category && (
-                                <p className="text-xs text-slate-400 font-light mt-1">{scanResult.participant.category}</p>
-                            )}
-
-                            {/* 🚀 NEW: DYNAMIC METADATA GRID 🚀 */}
-                            {scanResult.participant?.metadata && Object.keys(scanResult.participant.metadata).length > 0 && (
-                                <div className="mt-5 border-t border-white/10 pt-5">
-                                    <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-teal-500/70 mb-3 text-left">Additional Details</h4>
-                                    <div className="grid grid-cols-2 gap-2 text-left">
-                                        {Object.entries(scanResult.participant.metadata).map(([key, value]) => (
-                                            <div key={key} className="bg-slate-900/50 border border-white/5 p-3 rounded-2xl flex flex-col justify-center">
-                                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate">
-                                                    {key}
-                                                </span>
-                                                <span className="text-xs font-bold text-slate-300 truncate" title={String(value)}>
-                                                    {String(value)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        
-                        <button 
-                            onClick={closeResult} 
-                            className={`w-full py-5 text-white font-semibold tracking-[0.2em] uppercase text-[11px] rounded-[1.5rem] active:scale-95 transition-all shadow-lg relative z-10 shrink-0 ${scanResult.type === 'success' ? 'bg-teal-500/90 hover:bg-teal-400' : 'bg-rose-500/90 hover:bg-rose-400'}`}
+              {/* 🚀 DYNAMIC EXCEL METADATA HOLOGRAPHIC GRID */}
+              {scanResult.participant?.metadata &&
+                Object.keys(scanResult.participant.metadata).length > 0 && (
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    {Object.entries(scanResult.participant.metadata).map(
+                      ([key, value], index) => (
+                        <div
+                          key={key}
+                          className="bg-slate-800/50 border border-white/5 p-3.5 rounded-xl hologram-item flex flex-col justify-center"
+                          style={{ animationDelay: `${200 + index * 50}ms` }} // Staggers the appearance of each block!
                         >
-                            Continue
-                        </button>
-                    </div>
-                </div>
-            )}
+                          <span className="text-[7px] font-black text-teal-500/80 uppercase tracking-[0.2em] block truncate mb-1">
+                            {key}
+                          </span>
+                          <span className="text-xs font-bold text-white truncate block">
+                            {String(value)}
+                          </span>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                )}
+
+              {/* Action Button */}
+              <button
+                onClick={closeResult}
+                className={`w-full py-5 font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl active:scale-95 transition-all hologram-item shadow-xl ${scanResult.type === "success" ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-[0_10px_20px_rgba(16,185,129,0.3)]" : "bg-rose-500 text-white hover:bg-rose-400 shadow-[0_10px_20px_rgba(244,63,94,0.3)]"}`}
+                style={{ animationDelay: "400ms" }}
+              >
+                {scanResult.type === "success"
+                  ? "Clear & Scan Next"
+                  : "Acknowledge Overide"}
+              </button>
+            </div>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 };
 
 export default Scanner;
