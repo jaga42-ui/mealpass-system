@@ -74,7 +74,8 @@ exports.verifyAndLogScan = async (req, res) => {
                 name: participant.name,
                 category: participant.category,
                 department: participant.department,
-                photoUrl: participant.photoUrl
+                photoUrl: participant.photoUrl,
+                metadata: participant.metadata // Send metadata back so the scanner UI can show it!
             }
         });
 
@@ -111,5 +112,35 @@ exports.getTodayStats = async (req, res) => {
     } catch (error) {
         console.error('Stats Error:', error);
         res.status(500).json({ message: 'Server error fetching stats.' });
+    }
+};
+
+// 🚀 THE MISSING FUNCTION: Get Detailed Scan History for the PDF
+// @desc    Get complete history of all scans
+// @route   GET /api/scans/history
+// @access  Private (Admin Only)
+exports.getScanHistory = async (req, res) => {
+    try {
+        // Find all scans, populate the participant's name and category using 'participantId', sort by newest first
+        const scans = await Scan.find()
+            .populate('participantId', 'name category metadata') 
+            .sort({ createdAt: -1 }); 
+            
+        // Map it so the frontend receives a clean object
+        const formattedScans = scans.map(scan => ({
+            _id: scan._id,
+            mealType: scan.mealType,
+            scanDate: scan.scanDate,
+            scannedAt: scan.createdAt,
+            participant: scan.participantId ? {
+                name: scan.participantId.name,
+                category: scan.participantId.category
+            } : null
+        }));
+
+        res.status(200).json(formattedScans);
+    } catch (error) {
+        console.error('History Error:', error);
+        res.status(500).json({ message: 'Failed to fetch scan history' });
     }
 };
