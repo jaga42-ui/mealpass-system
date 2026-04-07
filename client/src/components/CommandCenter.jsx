@@ -334,16 +334,18 @@ const CommandCenter = () => {
     }
   };
 
-  // --- 4. PRINT QR CODES ---
+  // --- 4. PRINT ANONYMOUS BLANK ID CARDS ---
   const generateQRPDF = async () => {
     try {
       setLoading(true);
-      showMessage("Generating codes...", "success");
-      const res = await api.get("/participants");
-      const participants = res.data;
+      showMessage("Minting secure anonymous badges...", "success");
 
-      if (participants.length === 0)
-        return showMessage("Roster empty.", "error");
+      // Generate 60 blank cryptographic badges (5 pages of 12)
+      const res = await api.get("/admin/generate-badges?count=60");
+      const badges = res.data.badges;
+
+      if (!badges || badges.length === 0)
+        return showMessage("Failed to mint badges.", "error");
 
       const doc = new jsPDF("portrait", "mm", "a4");
       const cols = 3,
@@ -355,8 +357,9 @@ const CommandCenter = () => {
         qrSize = 40;
       let currentItem = 0;
 
-      for (let i = 0; i < participants.length; i++) {
-        const p = participants[i];
+      for (let i = 0; i < badges.length; i++) {
+        const qrString = badges[i];
+
         if (currentItem > 0 && currentItem % (cols * rows) === 0) {
           doc.addPage();
           currentItem = 0;
@@ -365,54 +368,45 @@ const CommandCenter = () => {
         const x = marginX + (currentItem % cols) * (badgeWidth + 10);
         const y = marginY + Math.floor(currentItem / cols) * (badgeHeight + 5);
 
+        // Draw Card Outline
         doc.setDrawColor(200);
         doc.roundedRect(x, y, badgeWidth, badgeHeight, 3, 3);
 
-        if (p.qrId) {
-          const qrDataUrl = await QRCode.toDataURL(p.qrId, {
-            margin: 1,
-            width: 400,
-          });
-          doc.addImage(
-            qrDataUrl,
-            "PNG",
-            x + (badgeWidth - qrSize) / 2,
-            y + 5,
-            qrSize,
-            qrSize,
-          );
-        } else {
-          doc.setFontSize(10);
-          doc.setTextColor(150);
-          doc.text("UNASSIGNED", x + 12, y + 25);
-        }
-
-        doc.setFontSize(10);
-        doc.setTextColor(30);
-        doc.setFont("helvetica", "bold");
-        const shortName = p.name
-          ? p.name.length > 18
-            ? p.name.substring(0, 15) + "..."
-            : p.name
-          : "Unnamed";
-        doc.text(
-          shortName,
-          x + (badgeWidth - doc.getTextWidth(shortName)) / 2,
-          y + 52,
+        // Draw the actual QR Code
+        const qrDataUrl = await QRCode.toDataURL(qrString, {
+          margin: 1,
+          width: 400,
+        });
+        doc.addImage(
+          qrDataUrl,
+          "PNG",
+          x + (badgeWidth - qrSize) / 2,
+          y + 5,
+          qrSize,
+          qrSize,
         );
 
+        // Corporate Branding
+        doc.setFontSize(12);
+        doc.setTextColor(20, 184, 166);
+        doc.setFont("helvetica", "bold");
+        doc.text("ACCESSPRO VIP", x + badgeWidth / 2, y + 52, {
+          align: "center",
+        });
+
+        // Print the short ID
         doc.setFontSize(8);
         doc.setTextColor(100);
         doc.setFont("helvetica", "normal");
-        const subText = `${p.qrId ? p.qrId.split("-")[0] : "NO BADGE"} • ${p.category}`;
-        doc.text(
-          subText,
-          x + (badgeWidth - doc.getTextWidth(subText)) / 2,
-          y + 58,
-        );
+        const shortId = qrString.split("-")[0];
+        doc.text(`ID: ${shortId}`, x + badgeWidth / 2, y + 58, {
+          align: "center",
+        });
+
         currentItem++;
       }
-      doc.save("Badges.pdf");
+      doc.save("AccessPro_Blank_Badges.pdf");
+      showMessage("Blank badges downloaded.", "success");
     } catch (err) {
       showMessage("Generation failed.", "error");
     } finally {
@@ -588,7 +582,7 @@ const CommandCenter = () => {
             >
               <i className="ph-duotone ph-printer text-2xl text-teal-400 mb-1"></i>
               <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest">
-                Print Physical IDs
+                Print Blank IDs
               </span>
             </button>
           </div>
