@@ -331,7 +331,7 @@ const CommandCenter = () => {
     }
   };
 
-  // --- 🌸 NEW: WARM & WELCOMING ANONYMOUS BADGES ---
+  // --- 🌸 MINIMAL & WELCOMING ANONYMOUS BADGES ---
     const generateQRPDF = async () => {
         const count = parseInt(mintCount);
         if (!count || count < 1) return showMessage('Please enter a valid number.', 'error');
@@ -369,46 +369,27 @@ const CommandCenter = () => {
                 const x = marginX + (colIndex * (cardW + gapX)); 
                 const y = marginY + (rowIndex * (cardH + gapY)); 
 
-                // 1. Draw Card Outline (Soft gray)
+                // 1. Draw Card Outline (Soft gray, just so you know where to cut)
                 doc.setDrawColor(220);
                 doc.roundedRect(x, y, cardW, cardH, 4, 4);
 
-                // 2. Generate QR with HIGH Error Correction
+                // 2. Generate Minimal QR Code (No hole punched in the middle!)
                 const qrDataUrl = await QRCode.toDataURL(qrString, { 
                     margin: 0, 
-                    width: 400, 
-                    errorCorrectionLevel: 'H',
-                    color: { dark: '#4A4A4A', light: '#FFFFFF' } // Softer dark gray instead of harsh black
+                    width: 400,
+                    color: { dark: '#333333', light: '#FFFFFF' } // Soft dark charcoal instead of harsh black
                 });
                 
                 const qrX = x + (cardW - qrSize) / 2;
-                const qrY = y + 5;
+                const qrY = y + 7; // Moved down slightly to balance perfectly
                 doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
 
-                // 3. Punch a white hole in the center of the QR code
+                // 3. The Only Text: Heart-warming Tagline
                 const centerX = x + (cardW / 2);
-                const centerY = qrY + (qrSize / 2);
-                doc.setFillColor(255, 255, 255);
-                doc.rect(centerX - 4.5, centerY - 4.5, 9, 9, 'F'); 
-
-                // 4. Draw a soft, warm Sage Green circle with a tiny heart
-                doc.setFillColor(139, 168, 136); // Calming Sage Green
-                doc.circle(centerX, centerY, 3.5, 'F');
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(7);
-                doc.setFont("helvetica", "normal");
-                doc.text("♥", centerX, centerY + 2.2, { align: "center" });
-
-                // 5. Heart-warming Tagline
-                doc.setFontSize(8); 
-                doc.setTextColor(100, 100, 100); // Soft charcoal
-                doc.setFont("helvetica", "bold");
-                doc.text("EVENT & MEAL PASS", centerX, y + 51, { align: "center" });
-                
-                doc.setFontSize(6); 
-                doc.setTextColor(160, 160, 160); // Gentle light gray
+                doc.setFontSize(7); 
+                doc.setTextColor(120, 120, 120); // Gentle gray
                 doc.setFont("helvetica", "italic");
-                doc.text("We're so glad you're here", centerX, y + 55, { align: "center" });
+                doc.text("We're so glad you're here", centerX, y + 53, { align: "center" });
                 
                 currentItem++;
             }
