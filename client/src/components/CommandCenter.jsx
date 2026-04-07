@@ -77,12 +77,9 @@ const CommandCenter = () => {
 
     reader.onload = async (evt) => {
       try {
-        // 1. Read as ArrayBuffer to prevent modern .xlsx files from collapsing
         const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, { type: "array" });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-
-        // 2. Read the sheet as a raw 2D Grid: [[Row 1], [Row 2], [Row 3]]
         const rawGrid = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
         if (rawGrid.length < 2) {
@@ -91,9 +88,7 @@ const CommandCenter = () => {
           return;
         }
 
-        // 3. Find column indexes from the header row
         const headers = rawGrid[0].map((h) => String(h).toLowerCase().trim());
-
         let nameCol = headers.findIndex((h) => h.includes("name"));
         let catCol = headers.findIndex(
           (h) => h.includes("category") || h.includes("role"),
@@ -102,17 +97,14 @@ const CommandCenter = () => {
           (h) => (h.includes("qr") || h.includes("id")) && !h.includes("email"),
         );
 
-        // Fallback: If "Name" header is missing, assume Name is the 2nd column (Index 1)
         if (nameCol === -1) nameCol = 1;
 
-        // 4. Chop off the header row and map the real data
         const cleanData = rawGrid
           .slice(1)
           .map((row) => {
-            if (!row || row.length === 0) return null; // Skip blank rows
-
+            if (!row || row.length === 0) return null;
             const participantName = row[nameCol];
-            if (!participantName) return null; // Skip if the name cell is empty
+            if (!participantName) return null;
 
             const formattedRow = {
               name: String(participantName).trim(),
@@ -130,7 +122,6 @@ const CommandCenter = () => {
               formattedRow.qrId = String(row[qrCol]).trim().toUpperCase();
             }
 
-            // Dump EVERY other column into the object for the backend's metadata bucket
             headers.forEach((header, i) => {
               if (
                 i !== nameCol &&
@@ -144,7 +135,7 @@ const CommandCenter = () => {
 
             return formattedRow;
           })
-          .filter(Boolean); // Removes all the nulls
+          .filter(Boolean);
 
         console.log(
           `🚀 SUCCESSFULLY PARSED ${cleanData.length} ROWS:`,
@@ -159,7 +150,6 @@ const CommandCenter = () => {
           return;
         }
 
-        // 5. Send to backend
         const res = await api.post("/admin/bulk-upload", cleanData);
         showMessage(res.data.message, "success");
       } catch (err) {
@@ -171,7 +161,7 @@ const CommandCenter = () => {
         );
       } finally {
         setLoading(false);
-        e.target.value = null; // Resets the file input
+        e.target.value = null;
       }
     };
 
@@ -328,233 +318,291 @@ const CommandCenter = () => {
   };
 
   return (
-    <div className="space-y-6 animate-enter w-full max-w-md mx-auto pb-10">
+    <div className="animate-enter w-full max-w-md md:max-w-4xl mx-auto pb-24 relative z-20 px-4 md:px-0">
+      {/* 💎 ULTRA-SLEEK GLASS HEADER */}
+      <div className="sticky top-16 z-30 pt-4 pb-6 bg-slate-950/80 backdrop-blur-2xl mx-[-1rem] px-4 md:mx-0 md:px-0 md:bg-transparent shadow-[0_20px_40px_rgba(0,0,0,0.8)] md:shadow-none border-b border-white/5 md:border-none">
+        <h2 className="text-3xl font-black text-white tracking-tight flex items-center gap-4">
+          <div className="w-12 h-12 bg-indigo-500/10 border border-indigo-500/30 rounded-2xl flex items-center justify-center shadow-inner">
+            <i className="ph-fill ph-cpu text-indigo-400 text-2xl"></i>
+          </div>
+          Command Center
+        </h2>
+        <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em] mt-2 ml-16">
+          System Architecture & Overrides
+        </p>
+      </div>
+
+      {/* FLOATING ALERTS */}
       {message && (
         <div
-          className={`p-4 rounded-2xl text-[11px] font-bold text-center backdrop-blur-sm shadow-lg animate-enter border ${message.type === "error" ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-teal-500/10 border-teal-500/30 text-teal-300"}`}
+          className={`fixed top-24 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-full text-[11px] font-black uppercase tracking-widest text-center backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] animate-enter border ${message.type === "error" ? "bg-rose-500/20 border-rose-500/50 text-rose-300" : "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"}`}
         >
           {message.text}
         </div>
       )}
 
-      {/* SECTION 1: GLOBAL OVERRIDES */}
-      <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] relative overflow-hidden">
-        <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3 tracking-wide">
-          <div className="w-8 h-8 bg-teal-500/20 border border-teal-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.2)]">
-            <i className="ph-bold ph-sliders text-teal-400"></i>
-          </div>
-          System Overrides
-        </h3>
+      {/* 🍱 BENTO BOX GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        {/* 🎛️ SECTION 1: SYSTEM OVERRIDES */}
+        <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/5 p-6 md:p-8 rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:border-white/10 transition-all group">
+          <h3 className="font-black text-white text-lg mb-6 flex items-center gap-3">
+            <div className="w-8 h-8 bg-teal-500/10 rounded-xl flex items-center justify-center group-hover:bg-teal-500/20 transition-colors">
+              <i className="ph-bold ph-faders text-teal-400"></i>
+            </div>
+            Overrides
+          </h3>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-slate-900/50 border border-white/5 p-4 rounded-2xl shadow-inner">
-            <span className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest">
-              Lock Scanners
-            </span>
-            <button
+          <div className="space-y-4">
+            {/* Custom Animated Toggle */}
+            <div
+              className="flex items-center justify-between bg-black/40 border border-white/5 p-5 rounded-2xl hover:border-white/10 transition-colors cursor-pointer"
               onClick={() =>
                 handleUpdateSettings(
                   "isScannerLocked",
                   !settings.isScannerLocked,
                 )
               }
-              className={`w-12 h-6 rounded-full relative transition-all duration-300 shadow-inner ${settings.isScannerLocked ? "bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]" : "bg-slate-700"}`}
             >
+              <div>
+                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest block mb-1">
+                  Terminal Lock
+                </span>
+                <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">
+                  {settings.isScannerLocked
+                    ? "Scanning Disabled"
+                    : "Scanning Active"}
+                </span>
+              </div>
               <div
-                className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-300 ${settings.isScannerLocked ? "left-7" : "left-1"}`}
-              ></div>
+                className={`w-14 h-8 rounded-full relative transition-all duration-500 shadow-inner ${settings.isScannerLocked ? "bg-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.4)]" : "bg-slate-800 border border-white/10"}`}
+              >
+                <div
+                  className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all duration-500 shadow-md ${settings.isScannerLocked ? "left-7" : "left-1"}`}
+                ></div>
+              </div>
+            </div>
+
+            {/* Custom Select */}
+            <div className="flex flex-col bg-black/40 border border-white/5 p-5 rounded-2xl hover:border-white/10 transition-colors">
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-3">
+                Active Meal Queue
+              </span>
+              <div className="relative">
+                <select
+                  value={settings.activeMeal}
+                  onChange={(e) =>
+                    handleUpdateSettings("activeMeal", e.target.value)
+                  }
+                  className="w-full bg-slate-800 text-teal-400 font-black tracking-wide py-4 px-5 rounded-xl border border-white/5 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all appearance-none shadow-inner"
+                >
+                  <option value="Breakfast">Breakfast</option>
+                  <option value="Lunch">Lunch</option>
+                  <option value="Snacks">Snacks</option>
+                  <option value="Dinner">Dinner</option>
+                </select>
+                <i className="ph-bold ph-caret-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 💾 SECTION 2: DATA CENTER */}
+        <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/5 p-6 md:p-8 rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:border-white/10 transition-all group">
+          <h3 className="font-black text-white text-lg mb-6 flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <i className="ph-bold ph-database text-blue-400"></i>
+            </div>
+            Data Ops
+          </h3>
+
+          <div className="grid grid-cols-2 gap-4 h-[calc(100%-3rem)]">
+            {/* Glowing Upload Dropzone */}
+            <label
+              className={`col-span-2 relative flex flex-col items-center justify-center py-6 bg-black/40 hover:bg-emerald-500/10 rounded-2xl cursor-pointer border border-white/5 hover:border-emerald-500/50 transition-all duration-300 text-center active:scale-95 group/upload ${loading ? "opacity-50 pointer-events-none" : ""}`}
+            >
+              <div className="w-12 h-12 bg-slate-800 group-hover/upload:bg-emerald-500/20 rounded-full flex items-center justify-center mb-3 transition-colors shadow-inner">
+                <i className="ph-duotone ph-file-xls text-2xl text-emerald-400"></i>
+              </div>
+              <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">
+                Bulk Upload
+              </span>
+              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                .xlsx / .csv
+              </span>
+              <input
+                type="file"
+                accept=".xlsx, .xls, .csv"
+                className="hidden"
+                onChange={handleFileUpload}
+                disabled={loading}
+              />
+            </label>
+
+            {/* App-Icon style buttons */}
+            <button
+              onClick={generateStatsPDF}
+              disabled={loading}
+              className="flex flex-col items-center justify-center py-5 bg-black/40 hover:bg-blue-500/10 rounded-2xl border border-white/5 hover:border-blue-500/50 transition-all duration-300 text-center active:scale-95 disabled:opacity-50 group/btn"
+            >
+              <i className="ph-duotone ph-chart-line-up text-2xl text-blue-400 mb-2 group-hover/btn:scale-110 transition-transform"></i>
+              <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">
+                EOD Report
+              </span>
+            </button>
+
+            <button
+              onClick={generateQRPDF}
+              disabled={loading}
+              className="flex flex-col items-center justify-center py-5 bg-black/40 hover:bg-teal-500/10 rounded-2xl border border-white/5 hover:border-teal-500/50 transition-all duration-300 text-center active:scale-95 disabled:opacity-50 group/btn"
+            >
+              <i className="ph-duotone ph-printer text-2xl text-teal-400 mb-2 group-hover/btn:scale-110 transition-transform"></i>
+              <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest">
+                Print Grid
+              </span>
             </button>
           </div>
-
-          <div className="flex flex-col bg-slate-900/50 border border-white/5 p-4 rounded-2xl shadow-inner">
-            <span className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest mb-3">
-              Force Active Meal
-            </span>
-            <select
-              value={settings.activeMeal}
-              onChange={(e) =>
-                handleUpdateSettings("activeMeal", e.target.value)
-              }
-              className="bg-slate-800 text-white font-bold py-3 px-4 rounded-xl border border-white/10 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner appearance-none"
-            >
-              <option value="Breakfast" className="bg-slate-800">
-                Breakfast
-              </option>
-              <option value="Lunch" className="bg-slate-800">
-                Lunch
-              </option>
-              <option value="Snacks" className="bg-slate-800">
-                Snacks
-              </option>
-              <option value="Dinner" className="bg-slate-800">
-                Dinner
-              </option>
-            </select>
-          </div>
         </div>
-      </div>
 
-      {/* SECTION 2: DATA OPERATIONS */}
-      <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
-        <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3 tracking-wide">
-          <div className="w-8 h-8 bg-blue-500/20 border border-blue-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-            <i className="ph-bold ph-database text-blue-400"></i>
-          </div>
-          Data Center
-        </h3>
+        {/* 👥 SECTION 3: STAFF MANAGEMENT (Spans full width on tablet/desktop) */}
+        <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/5 p-6 md:p-8 rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] hover:border-white/10 transition-all md:col-span-2 group">
+          <h3 className="font-black text-white text-lg mb-6 flex items-center gap-3">
+            <div className="w-8 h-8 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+              <i className="ph-bold ph-shield-check text-purple-400"></i>
+            </div>
+            Staff Permissions
+          </h3>
 
-        <div className="grid grid-cols-3 gap-3">
-          <label className="relative flex flex-col items-center justify-center py-5 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-2xl cursor-pointer transition-all duration-300 text-center border border-emerald-500/30 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] active:scale-95 group">
-            <i className="ph-duotone ph-file-xls text-3xl text-emerald-400 mb-2 group-hover:scale-110 transition-transform"></i>
-            <span className="text-[9px] font-black text-emerald-300/80 uppercase tracking-widest">
-              Upload
-            </span>
-            <input
-              type="file"
-              accept=".xlsx, .xls, .csv"
-              className="hidden"
-              onChange={handleFileUpload}
-              disabled={loading}
-            />
-          </label>
-
-          <button
-            onClick={generateStatsPDF}
-            disabled={loading}
-            className="flex flex-col items-center justify-center py-5 bg-blue-500/10 hover:bg-blue-500/20 rounded-2xl transition-all duration-300 text-center border border-blue-500/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] active:scale-95 disabled:opacity-50 group"
-          >
-            <i className="ph-duotone ph-file-pdf text-3xl text-blue-400 mb-2 group-hover:scale-110 transition-transform"></i>
-            <span className="text-[9px] font-black text-blue-300/80 uppercase tracking-widest">
-              Report
-            </span>
-          </button>
-
-          <button
-            onClick={generateQRPDF}
-            disabled={loading}
-            className="flex flex-col items-center justify-center py-5 bg-teal-500/10 hover:bg-teal-500/20 rounded-2xl transition-all duration-300 text-center border border-teal-500/30 hover:shadow-[0_0_20px_rgba(20,184,166,0.2)] active:scale-95 disabled:opacity-50 group"
-          >
-            <i className="ph-duotone ph-printer text-3xl text-teal-400 mb-2 group-hover:scale-110 transition-transform"></i>
-            <span className="text-[9px] font-black text-teal-300/80 uppercase tracking-widest">
-              Print IDs
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* SECTION 3: STAFF MANAGEMENT */}
-      <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)]">
-        <h3 className="font-black text-white text-lg mb-5 flex items-center gap-3 tracking-wide">
-          <div className="w-8 h-8 bg-purple-500/20 border border-purple-500/30 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.2)]">
-            <i className="ph-bold ph-shield-check text-purple-400"></i>
-          </div>
-          Staff Access
-        </h3>
-
-        <div className="space-y-3 max-h-60 overflow-y-auto no-scrollbar pr-1">
-          {users.map((u) => (
-            <div
-              key={u._id}
-              className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl flex items-center justify-between shadow-inner"
-            >
-              <div className="overflow-hidden mr-2">
-                <p className="text-xs font-bold text-slate-300 truncate">
-                  {u.email}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto no-scrollbar pr-1">
+            {users.map((u) => (
+              <div
+                key={u._id}
+                className="bg-black/40 border border-white/5 p-4 rounded-2xl flex items-center justify-between hover:border-white/10 transition-colors"
+              >
+                <div className="flex items-center gap-3 overflow-hidden mr-2">
+                  <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center shrink-0 border border-white/10">
+                    <i className="ph-fill ph-user text-slate-400 text-sm"></i>
+                  </div>
+                  <p className="text-xs font-bold text-slate-300 truncate">
+                    {u.email}
+                  </p>
+                </div>
+                <div className="relative shrink-0">
+                  <select
+                    value={u.role}
+                    onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                    className={`text-[9px] font-black uppercase tracking-widest rounded-xl px-3 py-2 outline-none appearance-none cursor-pointer shadow-inner pr-8 ${
+                      u.role === "admin"
+                        ? "bg-purple-500/10 border border-purple-500/30 text-purple-400"
+                        : u.role === "volunteer"
+                          ? "bg-teal-500/10 border border-teal-500/30 text-teal-400"
+                          : "bg-amber-500/10 border border-amber-500/30 text-amber-400"
+                    }`}
+                  >
+                    <option
+                      value="pending"
+                      className="bg-slate-900 text-amber-400"
+                    >
+                      Pending
+                    </option>
+                    <option
+                      value="volunteer"
+                      className="bg-slate-900 text-teal-400"
+                    >
+                      Volunteer
+                    </option>
+                    <option
+                      value="admin"
+                      className="bg-slate-900 text-purple-400"
+                    >
+                      Admin
+                    </option>
+                  </select>
+                  <i
+                    className={`ph-bold ph-caret-down absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] pointer-events-none ${
+                      u.role === "admin"
+                        ? "text-purple-400"
+                        : u.role === "volunteer"
+                          ? "text-teal-400"
+                          : "text-amber-400"
+                    }`}
+                  ></i>
+                </div>
+              </div>
+            ))}
+            {users.length === 0 && (
+              <div className="col-span-full py-8 text-center bg-black/20 rounded-2xl border border-dashed border-white/10">
+                <i className="ph-duotone ph-ghost text-3xl text-slate-600 mb-2"></i>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                  No staff found
                 </p>
               </div>
-              <select
-                value={u.role}
-                onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                className={`text-[9px] font-black uppercase tracking-widest rounded-xl px-3 py-2 outline-none appearance-none text-center cursor-pointer ${
-                  u.role === "admin"
-                    ? "bg-purple-500/20 border border-purple-500/30 text-purple-300"
-                    : u.role === "volunteer"
-                      ? "bg-teal-500/20 border border-teal-500/30 text-teal-300"
-                      : "bg-amber-500/20 border border-amber-500/30 text-amber-300"
-                }`}
-              >
-                <option value="pending" className="bg-slate-800 text-amber-400">
-                  Pending
-                </option>
-                <option
-                  value="volunteer"
-                  className="bg-slate-800 text-teal-400"
-                >
-                  Volunteer
-                </option>
-                <option value="admin" className="bg-slate-800 text-purple-400">
-                  Admin
-                </option>
-              </select>
-            </div>
-          ))}
-          {users.length === 0 && (
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 text-center py-4">
-              No staff found.
-            </p>
-          )}
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* SECTION 4: 🚨 DANGER ZONE 🚨 */}
-      <div className="bg-rose-950/20 border border-rose-500/30 p-6 rounded-[2rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] relative overflow-hidden mt-8">
-        <div className="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none"></div>
-        <h3 className="font-black text-rose-500 text-lg mb-2 flex items-center gap-3 tracking-wide relative z-10">
-          <div className="w-8 h-8 bg-rose-500/20 border border-rose-500/50 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(244,63,94,0.3)]">
-            <i className="ph-bold ph-warning-octagon text-rose-400"></i>
-          </div>
-          Danger Zone
-        </h3>
-        <p className="text-[10px] text-rose-300/60 uppercase tracking-widest mb-5 relative z-10 ml-11">
-          Irreversible destructive actions
-        </p>
+        {/* 🚨 SECTION 4: DANGER ZONE (Spans full width) */}
+        <div className="bg-rose-950/20 border border-rose-500/20 p-6 md:p-8 rounded-[2.5rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] relative overflow-hidden md:col-span-2 group">
+          {/* CSS Striped background pattern for Danger Zone */}
+          <div
+            className="absolute inset-0 opacity-[0.03] pointer-events-none"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, #f43f5e, #f43f5e 10px, transparent 10px, transparent 20px)",
+            }}
+          ></div>
+          <div className="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none"></div>
 
-        <div className="flex items-center justify-between bg-black/40 border border-rose-500/20 p-4 rounded-2xl shadow-inner relative z-10">
-          <div>
-            <h4 className="text-white font-black text-sm tracking-wide">
-              Purge Database
-            </h4>
-            <p className="text-[9px] text-slate-400 uppercase tracking-widest mt-1">
-              Wipe rosters & scans
-            </p>
+          <div className="flex flex-col md:flex-row md:items-center justify-between relative z-10 gap-6">
+            <div>
+              <h3 className="font-black text-rose-500 text-lg mb-1 flex items-center gap-3 tracking-wide">
+                <div className="w-8 h-8 bg-rose-500/10 rounded-xl flex items-center justify-center group-hover:bg-rose-500/20 transition-colors border border-rose-500/30">
+                  <i className="ph-bold ph-warning-octagon text-rose-400"></i>
+                </div>
+                Terminate Database
+              </h3>
+              <p className="text-[10px] text-rose-400/60 font-bold uppercase tracking-widest mt-2 md:ml-11">
+                Permanently wipe all rosters, analytics, and scan data.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsPurgeModalOpen(true)}
+              className="px-8 py-4 bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 border border-rose-500/50 font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-[0_0_20px_rgba(244,63,94,0.1)] hover:shadow-[0_0_30px_rgba(244,63,94,0.4)] active:scale-95 transition-all w-full md:w-auto shrink-0"
+            >
+              Initiate Purge
+            </button>
           </div>
-          <button
-            onClick={() => setIsPurgeModalOpen(true)}
-            className="px-4 py-2 bg-rose-500 hover:bg-rose-400 text-white font-black uppercase tracking-widest text-[9px] rounded-xl shadow-[0_0_15px_rgba(244,63,94,0.4)] active:scale-95 transition-all"
-          >
-            Initiate
-          </button>
         </div>
       </div>
 
       {/* 🚨 SCROLL-PROOFED PURGE CONFIRMATION MODAL 🚨 */}
       {isPurgeModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4 sm:p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-2xl p-4 overflow-y-auto">
           <div className="bg-slate-900 border border-rose-500/50 w-full max-w-sm rounded-[2.5rem] p-8 shadow-[0_0_50px_rgba(244,63,94,0.2)] animate-enter relative overflow-hidden text-center my-auto">
             <div className="absolute top-0 left-0 w-full h-1 bg-rose-500"></div>
 
-            <div className="w-20 h-20 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-rose-500/50">
+            <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-rose-500/30 shadow-inner">
               <i className="ph-fill ph-warning-diamond text-4xl text-rose-500 animate-pulse"></i>
             </div>
 
-            <h3 className="text-2xl font-black text-white mb-2">
+            <h3 className="text-2xl font-black text-white mb-2 tracking-wide">
               Confirm Purge
             </h3>
-            <p className="text-[11px] text-rose-300 font-bold uppercase tracking-widest leading-relaxed mb-6">
-              This will permanently destroy all participant records and meal
-              scan history.
+            <p className="text-[10px] text-rose-400/80 font-bold uppercase tracking-[0.1em] leading-relaxed mb-8">
+              This action is destructive and irreversible.
             </p>
 
-            <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] block mb-2">
-              Type "PURGE" to confirm
-            </label>
-            <input
-              type="text"
-              value={purgeConfirmText}
-              onChange={(e) => setPurgeConfirmText(e.target.value)}
-              className="w-full bg-black/50 border border-rose-500/30 rounded-xl py-4 text-center text-white font-black tracking-widest focus:outline-none focus:border-rose-400 mb-6 uppercase"
-              placeholder="PURGE"
-            />
+            <div className="bg-black/40 p-5 rounded-2xl border border-rose-500/20 mb-6">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] block mb-3">
+                Type "PURGE" below
+              </label>
+              <input
+                type="text"
+                value={purgeConfirmText}
+                onChange={(e) => setPurgeConfirmText(e.target.value)}
+                className="w-full bg-slate-900 border border-rose-500/30 rounded-xl py-4 text-center text-white font-black tracking-[0.3em] focus:outline-none focus:border-rose-400 focus:shadow-[0_0_15px_rgba(244,63,94,0.3)] transition-all uppercase"
+                placeholder="PURGE"
+              />
+            </div>
 
             <div className="flex gap-3">
               <button
@@ -562,16 +610,16 @@ const CommandCenter = () => {
                   setIsPurgeModalOpen(false);
                   setPurgeConfirmText("");
                 }}
-                className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-white/10"
+                className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-white/10 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={executePurge}
                 disabled={purgeConfirmText !== "PURGE" || isPurging}
-                className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all ${purgeConfirmText === "PURGE" ? "bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)]" : "bg-slate-800 text-slate-600"}`}
+                className={`flex-1 py-4 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all ${purgeConfirmText === "PURGE" ? "bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)] hover:bg-rose-400 active:scale-95" : "bg-slate-800 text-slate-600 pointer-events-none"}`}
               >
-                {isPurging ? "Purging..." : "Destroy Data"}
+                {isPurging ? "Purging..." : "Destroy"}
               </button>
             </div>
           </div>
