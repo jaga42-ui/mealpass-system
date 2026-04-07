@@ -13,7 +13,6 @@ import Scanner from './components/Scanner';
 import ParticipantList from './components/ParticipantList';
 import CommandCenter from './components/CommandCenter';
 import Stats from './components/Stats';
-import BadgeGenerator from './components/BadgeGenerator';
 
 // 🛡️ Custom Router Guard
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -92,15 +91,6 @@ function App() {
                                 </ProtectedRoute>
                             } 
                         />
-                        <Route 
-                            path="/print" 
-                            element={
-                                <ProtectedRoute requireAdmin={true}>
-                                    <BadgeGenerator />
-                                </ProtectedRoute>
-                            } 
-                        />
-
                         {/* Catch-all redirect */}
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
