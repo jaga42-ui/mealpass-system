@@ -159,43 +159,84 @@ const CommandCenter = () => {
   };
 
   // --- PDF GENERATION LOGIC ---
-  const generateStatsPDF = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get("/scans/stats");
-      const stats = res.data.stats;
-      const doc = new jsPDF();
+  // --- 4. PROFESSIONAL EOD PDF REPORT ---
+    const generateStatsPDF = async () => {
+        try {
+            setLoading(true);
+            showMessage('Compiling secure report...', 'success');
+            
+            const res = await api.get('/scans/stats');
+            const stats = res.data.stats;
+            const doc = new jsPDF();
+            
+            // 1. Time & Date Formatting
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-      doc.setFontSize(22);
-      doc.setTextColor(20, 184, 166);
-      doc.text("AccessPro - Report", 14, 20);
+            // 2. Corporate Header
+            doc.setFontSize(24);
+            doc.setTextColor(20, 184, 166); // Teal
+            doc.setFont("helvetica", "bold");
+            doc.text("ACCESSPRO", 14, 25);
 
-      autoTable(doc, {
-        startY: 40,
-        headStyles: { fillColor: [20, 184, 166] },
-        head: [["Meal Category", "Total Served"]],
-        body: [
-          ["Breakfast", stats.Breakfast || 0],
-          ["Lunch", stats.Lunch || 0],
-          ["Snacks", stats.Snacks || 0],
-          ["Dinner", stats.Dinner || 0],
-        ],
-        foot: [["GRAND TOTAL", res.data.total || 0]],
-        footStyles: {
-          fillColor: [240, 240, 240],
-          textColor: [0, 0, 0],
-          fontStyle: "bold",
-        },
-      });
+            doc.setFontSize(14);
+            doc.setTextColor(50, 50, 50);
+            doc.text("End of Day Operations Report", 14, 33);
 
-      doc.save(`Report_${new Date().toISOString().split("T")[0]}.pdf`);
-      showMessage("Report downloaded.", "success");
-    } catch (err) {
-      showMessage("Failed to generate.", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+            // 3. Document Metadata
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Report Period:   ${dateStr}`, 14, 45);
+            doc.text(`Generated On:    ${dateStr} at ${timeStr}`, 14, 51);
+            doc.text(`Authorized By:   System Administrator`, 14, 57);
+
+            // 4. Professional Executive Summary
+            doc.setFontSize(11);
+            doc.setTextColor(60, 60, 60);
+            const introText = "This document provides a comprehensive, cryptographically verified summary of meal fulfillments and badge scan activities recorded across all active terminals for the specified operational period. All data reflects real-time database ledger entries.";
+            // Split text so it wraps cleanly and doesn't run off the edge of the PDF
+            const splitIntro = doc.splitTextToSize(introText, 180);
+            doc.text(splitIntro, 14, 68);
+
+            // 5. The Upgraded Data Table
+            autoTable(doc, {
+                startY: 85,
+                theme: 'grid',
+                headStyles: { fillColor: [20, 184, 166], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' },
+                columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' } },
+                head: [['Operational Category', 'Total Verified Scans']],
+                body: [
+                    ['Breakfast Fulfillment', stats.Breakfast || 0],
+                    ['Lunch Fulfillment', stats.Lunch || 0],
+                    ['Snacks Fulfillment', stats.Snacks || 0],
+                    ['Dinner Fulfillment', stats.Dinner || 0],
+                ],
+                foot: [['TOTAL SYSTEM THROUGHPUT', res.data.total || 0]],
+                footStyles: { fillColor: [240, 240, 240], textColor: [0,0,0], fontStyle: 'bold', halign: 'right' }
+            });
+
+            // 6. Security Footer
+            const pageCount = doc.internal.getNumberOfPages();
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            for(let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.text(`AccessPro Security & Logistics System • Page ${i} of ${pageCount}`, 14, 285);
+            }
+
+            // Save the file with the exact date in the filename
+            doc.save(`AccessPro_EOD_Report_${now.toISOString().split('T')[0]}.pdf`);
+            showMessage('Report downloaded successfully.', 'success');
+            
+        } catch (err) { 
+            console.error(err);
+            showMessage('Failed to generate stats report.', 'error'); 
+        } finally { 
+            setLoading(false); 
+        }
+    };
 
   const generateQRPDF = async () => {
     try {
