@@ -36,7 +36,7 @@ const CommandCenter = () => {
       console.error("Error fetching settings", err);
     } finally {
       setIsSettingsLoaded(true);
-    } // Tells UI to stop showing skeletons
+    }
   };
 
   const fetchUsers = async () => {
@@ -71,7 +71,7 @@ const CommandCenter = () => {
     }
   };
 
-  // --- 🛡️ ARRAY-BUFFER EXCEL UPLOAD ---
+  // --- 1. 🛡️ ARRAY-BUFFER EXCEL UPLOAD ---
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -158,86 +158,183 @@ const CommandCenter = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  // --- PDF GENERATION LOGIC ---
-  // --- 4. PROFESSIONAL EOD PDF REPORT ---
-    const generateStatsPDF = async () => {
-        try {
-            setLoading(true);
-            showMessage('Compiling secure report...', 'success');
-            
-            const res = await api.get('/scans/stats');
-            const stats = res.data.stats;
-            const doc = new jsPDF();
-            
-            // 1. Time & Date Formatting
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  // --- 2. SUMMARY STATS PDF REPORT ---
+  const generateStatsPDF = async () => {
+    try {
+      setLoading(true);
+      showMessage("Compiling secure report...", "success");
 
-            // 2. Corporate Header
-            doc.setFontSize(24);
-            doc.setTextColor(20, 184, 166); // Teal
-            doc.setFont("helvetica", "bold");
-            doc.text("ACCESSPRO", 14, 25);
+      const res = await api.get("/scans/stats");
+      const stats = res.data.stats;
+      const doc = new jsPDF();
 
-            doc.setFontSize(14);
-            doc.setTextColor(50, 50, 50);
-            doc.text("End of Day Operations Report", 14, 33);
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      const timeStr = now.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
 
-            // 3. Document Metadata
-            doc.setFontSize(10);
-            doc.setTextColor(100, 100, 100);
-            doc.setFont("helvetica", "normal");
-            doc.text(`Report Period:   ${dateStr}`, 14, 45);
-            doc.text(`Generated On:    ${dateStr} at ${timeStr}`, 14, 51);
-            doc.text(`Authorized By:   System Administrator`, 14, 57);
+      doc.setFontSize(24);
+      doc.setTextColor(20, 184, 166);
+      doc.setFont("helvetica", "bold");
+      doc.text("ACCESSPRO", 14, 25);
 
-            // 4. Professional Executive Summary
-            doc.setFontSize(11);
-            doc.setTextColor(60, 60, 60);
-            const introText = "This document provides a comprehensive, cryptographically verified summary of meal fulfillments and badge scan activities recorded across all active terminals for the specified operational period. All data reflects real-time database ledger entries.";
-            // Split text so it wraps cleanly and doesn't run off the edge of the PDF
-            const splitIntro = doc.splitTextToSize(introText, 180);
-            doc.text(splitIntro, 14, 68);
+      doc.setFontSize(14);
+      doc.setTextColor(50, 50, 50);
+      doc.text("End of Day Operations Report", 14, 33);
 
-            // 5. The Upgraded Data Table
-            autoTable(doc, {
-                startY: 85,
-                theme: 'grid',
-                headStyles: { fillColor: [20, 184, 166], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' },
-                columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' } },
-                head: [['Operational Category', 'Total Verified Scans']],
-                body: [
-                    ['Breakfast Fulfillment', stats.Breakfast || 0],
-                    ['Lunch Fulfillment', stats.Lunch || 0],
-                    ['Snacks Fulfillment', stats.Snacks || 0],
-                    ['Dinner Fulfillment', stats.Dinner || 0],
-                ],
-                foot: [['TOTAL SYSTEM THROUGHPUT', res.data.total || 0]],
-                footStyles: { fillColor: [240, 240, 240], textColor: [0,0,0], fontStyle: 'bold', halign: 'right' }
-            });
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Report Period:   ${dateStr}`, 14, 45);
+      doc.text(`Generated On:    ${dateStr} at ${timeStr}`, 14, 51);
+      doc.text(`Authorized By:   System Administrator`, 14, 57);
 
-            // 6. Security Footer
-            const pageCount = doc.internal.getNumberOfPages();
-            doc.setFontSize(8);
-            doc.setTextColor(150, 150, 150);
-            for(let i = 1; i <= pageCount; i++) {
-                doc.setPage(i);
-                doc.text(`AccessPro Security & Logistics System • Page ${i} of ${pageCount}`, 14, 285);
-            }
+      doc.setFontSize(11);
+      doc.setTextColor(60, 60, 60);
+      const introText =
+        "This document provides a comprehensive, cryptographically verified summary of meal fulfillments and badge scan activities recorded across all active terminals for the specified operational period. All data reflects real-time database ledger entries.";
+      const splitIntro = doc.splitTextToSize(introText, 180);
+      doc.text(splitIntro, 14, 68);
 
-            // Save the file with the exact date in the filename
-            doc.save(`AccessPro_EOD_Report_${now.toISOString().split('T')[0]}.pdf`);
-            showMessage('Report downloaded successfully.', 'success');
-            
-        } catch (err) { 
-            console.error(err);
-            showMessage('Failed to generate stats report.', 'error'); 
-        } finally { 
-            setLoading(false); 
-        }
-    };
+      autoTable(doc, {
+        startY: 85,
+        theme: "grid",
+        headStyles: {
+          fillColor: [20, 184, 166],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          halign: "left",
+        },
+        columnStyles: { 0: { fontStyle: "bold" }, 1: { halign: "right" } },
+        head: [["Operational Category", "Total Verified Scans"]],
+        body: [
+          ["Breakfast Fulfillment", stats.Breakfast || 0],
+          ["Lunch Fulfillment", stats.Lunch || 0],
+          ["Snacks Fulfillment", stats.Snacks || 0],
+          ["Dinner Fulfillment", stats.Dinner || 0],
+        ],
+        foot: [["TOTAL SYSTEM THROUGHPUT", res.data.total || 0]],
+        footStyles: {
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+          halign: "right",
+        },
+      });
 
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.text(
+          `AccessPro Security & Logistics System • Page ${i} of ${pageCount}`,
+          14,
+          285,
+        );
+      }
+
+      doc.save(`AccessPro_EOD_Report_${now.toISOString().split("T")[0]}.pdf`);
+      showMessage("Report downloaded.", "success");
+    } catch (err) {
+      showMessage("Failed to generate report.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- 3. DETAILED SCAN LOG PDF ---
+  const generateDetailedReportPDF = async () => {
+    try {
+      setLoading(true);
+      showMessage("Compiling detailed scan log...", "success");
+
+      const res = await api.get("/scans/history");
+      const scans = res.data;
+
+      if (!scans || scans.length === 0) {
+        showMessage("No scan data found for today.", "error");
+        setLoading(false);
+        return;
+      }
+
+      const doc = new jsPDF();
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      doc.setFontSize(20);
+      doc.setTextColor(59, 130, 246);
+      doc.setFont("helvetica", "bold");
+      doc.text("ACCESSPRO", 14, 22);
+
+      doc.setFontSize(12);
+      doc.setTextColor(50, 50, 50);
+      doc.text("Detailed Access & Meal Ledger", 14, 29);
+
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated On: ${now.toLocaleString()}`, 14, 38);
+
+      const tableData = scans.map((scan) => {
+        const scanDate = new Date(scan.scannedAt || scan.createdAt);
+        return [
+          scan.participant?.name || "UNKNOWN ID",
+          scan.participant?.category || "N/A",
+          scan.mealType,
+          scanDate.toLocaleDateString(),
+          scanDate.toLocaleTimeString(),
+          scan.status || "Approved",
+        ];
+      });
+
+      autoTable(doc, {
+        startY: 45,
+        theme: "grid",
+        headStyles: {
+          fillColor: [15, 23, 42],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        head: [
+          ["Participant Name", "Category", "Meal", "Date", "Time", "Status"],
+        ],
+        body: tableData,
+      });
+
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.text(`AccessPro Audit Ledger • Page ${i} of ${pageCount}`, 14, 285);
+      }
+
+      doc.save(`AccessPro_Audit_Ledger_${now.toISOString().split("T")[0]}.pdf`);
+      showMessage("Audit Ledger downloaded.", "success");
+    } catch (err) {
+      console.error(err);
+      showMessage("Failed to generate ledger.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- 4. PRINT QR CODES ---
   const generateQRPDF = async () => {
     try {
       setLoading(true);
@@ -323,6 +420,7 @@ const CommandCenter = () => {
     }
   };
 
+  // --- 5. PURGE DATABASE ---
   const executePurge = async () => {
     if (purgeConfirmText !== "PURGE") return;
     setIsPurging(true);
@@ -365,7 +463,7 @@ const CommandCenter = () => {
       )}
 
       <div className="space-y-5 mt-6">
-        {/* 🎛️ SETTINGS (With Hydration Skeletons) */}
+        {/* 🎛️ SETTINGS */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem]">
           <h3 className="font-black text-white text-base mb-4 flex items-center gap-2">
             <i className="ph-bold ph-faders text-teal-400"></i> Overrides
@@ -464,22 +562,33 @@ const CommandCenter = () => {
             <button
               onClick={generateStatsPDF}
               disabled={loading}
-              className="flex flex-col items-center justify-center py-4 bg-blue-500/10 active:bg-blue-500/20 rounded-2xl border border-blue-500/30 transition-all disabled:opacity-50"
+              className="flex flex-col items-center justify-center py-4 bg-blue-500/10 active:bg-blue-500/20 rounded-[1.5rem] border border-blue-500/30 transition-all disabled:opacity-50"
             >
-              <i className="ph-duotone ph-chart-line-up text-2xl text-blue-400 mb-1"></i>
+              <i className="ph-duotone ph-chart-pie-slice text-2xl text-blue-400 mb-1"></i>
               <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">
-                EOD Report
+                Summary
+              </span>
+            </button>
+
+            <button
+              onClick={generateDetailedReportPDF}
+              disabled={loading}
+              className="flex flex-col items-center justify-center py-4 bg-indigo-500/10 active:bg-indigo-500/20 rounded-[1.5rem] border border-indigo-500/30 transition-all disabled:opacity-50"
+            >
+              <i className="ph-duotone ph-list-numbers text-2xl text-indigo-400 mb-1"></i>
+              <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
+                Audit Log
               </span>
             </button>
 
             <button
               onClick={generateQRPDF}
               disabled={loading}
-              className="flex flex-col items-center justify-center py-4 bg-teal-500/10 active:bg-teal-500/20 rounded-2xl border border-teal-500/30 transition-all disabled:opacity-50"
+              className="col-span-2 flex flex-col items-center justify-center py-4 bg-teal-500/10 active:bg-teal-500/20 rounded-[1.5rem] border border-teal-500/30 transition-all disabled:opacity-50"
             >
               <i className="ph-duotone ph-printer text-2xl text-teal-400 mb-1"></i>
               <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest">
-                Print IDs
+                Print Physical IDs
               </span>
             </button>
           </div>
