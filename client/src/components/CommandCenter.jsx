@@ -7,21 +7,21 @@ import api from "../api/axios";
 
 const CommandCenter = () => {
   const [users, setUsers] = useState([]);
-
-  // 🚀 Settings & Hydration State
   const [settings, setSettings] = useState({
     activeMeal: "Lunch",
     isScannerLocked: false,
   });
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
 
-  // --- 🚨 PURGE STATE ---
+  // --- MODAL STATES ---
   const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
   const [purgeConfirmText, setPurgeConfirmText] = useState("");
   const [isPurging, setIsPurging] = useState(false);
+
+  const [isMintModalOpen, setIsMintModalOpen] = useState(false);
+  const [mintCount, setMintCount] = useState(60);
 
   useEffect(() => {
     fetchSettings();
@@ -71,7 +71,6 @@ const CommandCenter = () => {
     }
   };
 
-  // --- 1. 🛡️ ARRAY-BUFFER EXCEL UPLOAD ---
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -158,7 +157,6 @@ const CommandCenter = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  // --- 2. SUMMARY STATS PDF REPORT ---
   const generateStatsPDF = async () => {
     try {
       setLoading(true);
@@ -251,7 +249,6 @@ const CommandCenter = () => {
     }
   };
 
-  // --- 3. DETAILED SCAN LOG PDF ---
   const generateDetailedReportPDF = async () => {
     try {
       setLoading(true);
@@ -334,27 +331,37 @@ const CommandCenter = () => {
     }
   };
 
-  // --- 4. PRINT ANONYMOUS BLANK ID CARDS ---
+  // --- 🚀 NEW: DYNAMIC ANONYMOUS PRINTING W/ EMBEDDED LOGO ---
   const generateQRPDF = async () => {
+    const count = parseInt(mintCount);
+    if (!count || count < 1)
+      return showMessage("Please enter a valid number.", "error");
+
+    setIsMintModalOpen(false); // Close the modal immediately
+
     try {
       setLoading(true);
-      showMessage("Minting secure anonymous badges...", "success");
+      showMessage(`Minting ${count} secure anonymous badges...`, "success");
 
-      // Generate 60 blank cryptographic badges (5 pages of 12)
-      const res = await api.get("/admin/generate-badges?count=60");
+      const res = await api.get(`/admin/generate-badges?count=${count}`);
       const badges = res.data.badges;
 
       if (!badges || badges.length === 0)
         return showMessage("Failed to mint badges.", "error");
 
       const doc = new jsPDF("portrait", "mm", "a4");
+
+      // Perfect A4 Grid Math
       const cols = 3,
-        rows = 4,
-        marginX = 15,
-        marginY = 15,
-        badgeWidth = 55,
-        badgeHeight = 65,
-        qrSize = 40;
+        rows = 4;
+      const cardW = 50,
+        cardH = 60;
+      const gapX = 10,
+        gapY = 10;
+      const marginX = 20,
+        marginY = 13.5;
+      const qrSize = 40;
+
       let currentItem = 0;
 
       for (let i = 0; i < badges.length; i++) {
@@ -365,48 +372,51 @@ const CommandCenter = () => {
           currentItem = 0;
         }
 
-        const x = marginX + (currentItem % cols) * (badgeWidth + 10);
-        const y = marginY + Math.floor(currentItem / cols) * (badgeHeight + 5);
+        const colIndex = currentItem % cols;
+        const rowIndex = Math.floor(currentItem / cols);
 
-        // Draw Card Outline
+        const x = marginX + colIndex * (cardW + gapX);
+        const y = marginY + rowIndex * (cardH + gapY);
+
+        // 1. Draw Card Outline
         doc.setDrawColor(200);
-        doc.roundedRect(x, y, badgeWidth, badgeHeight, 3, 3);
+        doc.roundedRect(x, y, cardW, cardH, 3, 3);
 
-        // Draw the actual QR Code
+        // 2. Generate QR with HIGH Error Correction (allows us to put a logo in the middle)
         const qrDataUrl = await QRCode.toDataURL(qrString, {
-          margin: 1,
+          margin: 0,
           width: 400,
+          errorCorrectionLevel: "H",
         });
-        doc.addImage(
-          qrDataUrl,
-          "PNG",
-          x + (badgeWidth - qrSize) / 2,
-          y + 5,
-          qrSize,
-          qrSize,
-        );
+        const qrX = x + (cardW - qrSize) / 2;
+        const qrY = y + 6;
+        doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
 
-        // Corporate Branding
-        doc.setFontSize(12);
-        doc.setTextColor(20, 184, 166);
+        // 3. Punch a white hole in the center of the QR code
+        const centerX = x + cardW / 2;
+        const centerY = qrY + qrSize / 2;
+        doc.setFillColor(255, 255, 255);
+        doc.rect(centerX - 4.5, centerY - 4.5, 9, 9, "F"); // 9x9mm white square
+
+        // 4. Draw the Teal AccessPro Icon inside the hole
+        doc.setFillColor(20, 184, 166);
+        doc.circle(centerX, centerY, 3.5, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(6);
         doc.setFont("helvetica", "bold");
-        doc.text("ACCESSPRO VIP", x + badgeWidth / 2, y + 52, {
-          align: "center",
-        });
+        doc.text("AP", centerX, centerY + 2.1, { align: "center" });
 
-        // Print the short ID
+        // 5. Print just the Short ID below it
         doc.setFontSize(8);
-        doc.setTextColor(100);
-        doc.setFont("helvetica", "normal");
+        doc.setTextColor(80);
+        doc.setFont("helvetica", "bold");
         const shortId = qrString.split("-")[0];
-        doc.text(`ID: ${shortId}`, x + badgeWidth / 2, y + 58, {
-          align: "center",
-        });
+        doc.text(`ID: ${shortId}`, centerX, y + 54, { align: "center" });
 
         currentItem++;
       }
-      doc.save("AccessPro_Blank_Badges.pdf");
-      showMessage("Blank badges downloaded.", "success");
+      doc.save(`AccessPro_Blank_Badges_${count}.pdf`);
+      showMessage(`Successfully downloaded ${count} badges.`, "success");
     } catch (err) {
       showMessage("Generation failed.", "error");
     } finally {
@@ -414,7 +424,6 @@ const CommandCenter = () => {
     }
   };
 
-  // --- 5. PURGE DATABASE ---
   const executePurge = async () => {
     if (purgeConfirmText !== "PURGE") return;
     setIsPurging(true);
@@ -437,7 +446,6 @@ const CommandCenter = () => {
 
   return (
     <div className="animate-enter w-full max-w-md mx-auto pb-24 px-4 relative z-20">
-      {/* MOBILE-OPTIMIZED HEADER */}
       <div className="sticky top-16 z-30 pt-4 pb-4 bg-slate-950/90 backdrop-blur-xl border-b border-white/5 mx-[-1rem] px-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
         <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
           <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/30 rounded-[0.8rem] flex items-center justify-center shadow-inner">
@@ -447,7 +455,6 @@ const CommandCenter = () => {
         </h2>
       </div>
 
-      {/* FLOATING MOBILE ALERTS */}
       {message && (
         <div
           className={`fixed top-32 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-[100] px-5 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-center backdrop-blur-xl shadow-2xl animate-enter border ${message.type === "error" ? "bg-rose-500/90 border-rose-400 text-white" : "bg-teal-500/90 border-teal-400 text-white"}`}
@@ -464,7 +471,6 @@ const CommandCenter = () => {
           </h3>
 
           <div className="space-y-3">
-            {/* TERMINAL LOCK */}
             <div
               className="flex items-center justify-between bg-black/40 p-4 rounded-2xl active:bg-black/60 transition-colors cursor-pointer"
               onClick={() =>
@@ -501,7 +507,6 @@ const CommandCenter = () => {
               )}
             </div>
 
-            {/* MEAL QUEUE */}
             <div className="relative bg-black/40 p-4 rounded-2xl">
               <span className="text-[11px] font-black text-white uppercase tracking-widest block mb-2">
                 Meal Queue
@@ -576,7 +581,7 @@ const CommandCenter = () => {
             </button>
 
             <button
-              onClick={generateQRPDF}
+              onClick={() => setIsMintModalOpen(true)}
               disabled={loading}
               className="col-span-2 flex flex-col items-center justify-center py-4 bg-teal-500/10 active:bg-teal-500/20 rounded-[1.5rem] border border-teal-500/30 transition-all disabled:opacity-50"
             >
@@ -661,6 +666,51 @@ const CommandCenter = () => {
           </button>
         </div>
       </div>
+
+      {/* 🖨️ MINT BADGES MODAL */}
+      {isMintModalOpen && (
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end bg-slate-950/80 backdrop-blur-sm p-4 animate-enter">
+          <div className="bg-slate-900 border border-teal-500/50 w-full max-w-md mx-auto rounded-[2.5rem] p-6 shadow-2xl relative">
+            <div className="w-16 h-16 bg-teal-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-teal-500/30">
+              <i className="ph-fill ph-qr-code text-3xl text-teal-500"></i>
+            </div>
+
+            <h3 className="text-xl font-black text-white text-center mb-1">
+              Mint Secure Badges
+            </h3>
+            <p className="text-[10px] text-teal-400/80 font-bold uppercase tracking-[0.1em] text-center mb-6">
+              Enter the number of cryptographic IDs to generate.
+            </p>
+
+            <div className="bg-black/40 p-4 rounded-[1.5rem] border border-teal-500/20 mb-6">
+              <input
+                type="number"
+                min="1"
+                max="1000"
+                value={mintCount}
+                onChange={(e) => setMintCount(e.target.value)}
+                className="w-full bg-slate-900 border border-teal-500/30 rounded-xl py-4 text-center text-white font-black text-xl focus:outline-none focus:border-teal-400"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={generateQRPDF}
+                disabled={loading || mintCount < 1}
+                className={`w-full py-4 font-black uppercase text-[11px] tracking-widest rounded-2xl transition-all ${loading || mintCount < 1 ? "bg-slate-800 text-slate-600 pointer-events-none" : "bg-teal-500 text-slate-900 active:scale-95 shadow-[0_0_20px_rgba(20,184,166,0.3)]"}`}
+              >
+                {loading ? "Minting..." : "Generate PDF"}
+              </button>
+              <button
+                onClick={() => setIsMintModalOpen(false)}
+                className="w-full py-4 text-slate-400 font-black uppercase text-[11px] tracking-widest rounded-2xl active:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 🚨 MOBILE PURGE SHEET */}
       {isPurgeModalOpen && (
