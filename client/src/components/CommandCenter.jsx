@@ -7,10 +7,14 @@ import api from "../api/axios";
 
 const CommandCenter = () => {
   const [users, setUsers] = useState([]);
+
+  // 🚀 Settings & Hydration State
   const [settings, setSettings] = useState({
     activeMeal: "Lunch",
     isScannerLocked: false,
   });
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -30,7 +34,9 @@ const CommandCenter = () => {
       setSettings(res.data);
     } catch (err) {
       console.error("Error fetching settings", err);
-    }
+    } finally {
+      setIsSettingsLoaded(true);
+    } // Tells UI to stop showing skeletons
   };
 
   const fetchUsers = async () => {
@@ -65,7 +71,7 @@ const CommandCenter = () => {
     }
   };
 
-  // --- 🛡️ ARRAY-BUFFER EXCEL UPLOAD (Intact & Bulletproof) ---
+  // --- 🛡️ ARRAY-BUFFER EXCEL UPLOAD ---
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -152,7 +158,7 @@ const CommandCenter = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  // --- PDF GENERATION LOGIC (Intact) ---
+  // --- PDF GENERATION LOGIC ---
   const generateStatsPDF = async () => {
     try {
       setLoading(true);
@@ -318,16 +324,18 @@ const CommandCenter = () => {
       )}
 
       <div className="space-y-5 mt-6">
-        {/* 🎛️ SETTINGS (Stacked for Mobile) */}
+        {/* 🎛️ SETTINGS (With Hydration Skeletons) */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem]">
           <h3 className="font-black text-white text-base mb-4 flex items-center gap-2">
             <i className="ph-bold ph-faders text-teal-400"></i> Overrides
           </h3>
 
           <div className="space-y-3">
+            {/* TERMINAL LOCK */}
             <div
               className="flex items-center justify-between bg-black/40 p-4 rounded-2xl active:bg-black/60 transition-colors cursor-pointer"
               onClick={() =>
+                isSettingsLoaded &&
                 handleUpdateSettings(
                   "isScannerLocked",
                   !settings.isScannerLocked,
@@ -339,42 +347,57 @@ const CommandCenter = () => {
                   Terminal Lock
                 </span>
                 <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
-                  {settings.isScannerLocked ? "Disabled" : "Active"}
+                  {!isSettingsLoaded
+                    ? "Connecting..."
+                    : settings.isScannerLocked
+                      ? "Disabled"
+                      : "Active"}
                 </span>
               </div>
-              <div
-                className={`w-12 h-7 rounded-full relative transition-all duration-300 ${settings.isScannerLocked ? "bg-rose-500" : "bg-slate-800 border border-white/10"}`}
-              >
+
+              {!isSettingsLoaded ? (
+                <div className="w-12 h-7 rounded-full bg-slate-800 animate-pulse"></div>
+              ) : (
                 <div
-                  className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all duration-300 ${settings.isScannerLocked ? "left-6" : "left-1"}`}
-                ></div>
-              </div>
+                  className={`w-12 h-7 rounded-full relative transition-all duration-300 ${settings.isScannerLocked ? "bg-rose-500" : "bg-slate-800 border border-white/10"}`}
+                >
+                  <div
+                    className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all duration-300 ${settings.isScannerLocked ? "left-6" : "left-1"}`}
+                  ></div>
+                </div>
+              )}
             </div>
 
+            {/* MEAL QUEUE */}
             <div className="relative bg-black/40 p-4 rounded-2xl">
               <span className="text-[11px] font-black text-white uppercase tracking-widest block mb-2">
                 Meal Queue
               </span>
-              <div className="relative">
-                <select
-                  value={settings.activeMeal}
-                  onChange={(e) =>
-                    handleUpdateSettings("activeMeal", e.target.value)
-                  }
-                  className="w-full bg-slate-800 text-teal-400 font-bold py-3.5 px-4 rounded-xl border border-white/5 outline-none focus:border-teal-500 appearance-none text-sm"
-                >
-                  <option value="Breakfast">Breakfast</option>
-                  <option value="Lunch">Lunch</option>
-                  <option value="Snacks">Snacks</option>
-                  <option value="Dinner">Dinner</option>
-                </select>
-                <i className="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
-              </div>
+
+              {!isSettingsLoaded ? (
+                <div className="w-full h-12 bg-slate-800/50 rounded-xl animate-pulse border border-white/5"></div>
+              ) : (
+                <div className="relative">
+                  <select
+                    value={settings.activeMeal}
+                    onChange={(e) =>
+                      handleUpdateSettings("activeMeal", e.target.value)
+                    }
+                    className="w-full bg-slate-800 text-teal-400 font-bold py-3.5 px-4 rounded-xl border border-white/5 outline-none focus:border-teal-500 appearance-none text-sm"
+                  >
+                    <option value="Breakfast">Breakfast</option>
+                    <option value="Lunch">Lunch</option>
+                    <option value="Snacks">Snacks</option>
+                    <option value="Dinner">Dinner</option>
+                  </select>
+                  <i className="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"></i>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* 💾 DATA OPS (Thumb-Friendly Buttons) */}
+        {/* 💾 DATA OPS */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem]">
           <h3 className="font-black text-white text-base mb-4 flex items-center gap-2">
             <i className="ph-bold ph-database text-blue-400"></i> Data Ops
@@ -421,7 +444,7 @@ const CommandCenter = () => {
           </div>
         </div>
 
-        {/* 👥 STAFF ACCESS (Compact List) */}
+        {/* 👥 STAFF ACCESS */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem]">
           <h3 className="font-black text-white text-base mb-4 flex items-center gap-2">
             <i className="ph-bold ph-shield-check text-purple-400"></i> Staff
@@ -477,7 +500,7 @@ const CommandCenter = () => {
           </div>
         </div>
 
-        {/* 🚨 DANGER ZONE (Minimal & Safe) */}
+        {/* 🚨 DANGER ZONE */}
         <div className="bg-rose-950/20 border border-rose-500/20 p-5 rounded-[2rem] mt-4">
           <h3 className="font-black text-rose-500 text-base mb-1 flex items-center gap-2">
             <i className="ph-bold ph-warning-octagon text-rose-400"></i> Danger
