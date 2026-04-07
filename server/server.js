@@ -42,8 +42,17 @@ const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/mealpass';
 
 mongoose.connect(MONGO_URI)
-    .then(() => {
+    .then(async () => { // 🚀 Added 'async' here to handle the database index wipe
         console.log('✅ Connected to MongoDB Atlas successfully.');
+        
+        // 🚀 THE FIX: Destroy the old strict QR index so it allows 500+ null IDs
+        try {
+            await mongoose.connection.collection('participants').dropIndex('qrId_1');
+            console.log('🧹 Cleared old strict QR index! Database is unlocked.');
+        } catch (e) {
+            // It will safely ignore this if the index is already deleted
+        }
+
         app.listen(PORT, () => {
             console.log(`🚀 Server running on port ${PORT}`);
         });
