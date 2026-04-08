@@ -23,7 +23,7 @@ const Navbar = () => {
                         <i className="ph-bold ph-shield-check text-white text-sm"></i>
                     </div>
                     <span className="font-black text-white text-sm tracking-widest uppercase drop-shadow-md">
-                        AccessPro
+                        Aahaaram
                     </span>
                 </div>
 

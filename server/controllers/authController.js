@@ -16,7 +16,7 @@ const sendEmail = async (options) => {
     });
 
     const mailOptions = {
-        from: 'AccessPro Security <noreply@accesspro.com>',
+        from: 'Guruprasadjena989@gmail.com>',
         to: options.email,
         subject: options.subject,
         text: options.message
@@ -102,13 +102,13 @@ exports.forgotPassword = async (req, res) => {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-        const message = `You are receiving this email because a password reset was requested for your AccessPro account.\n\nPlease click the link below to reset your password:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n\nThis link expires in 10 minutes.`;
+        const message = `You are receiving this email because a password reset was requested for your Aahaaram account.\n\nPlease click the link below to reset your password:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n\nThis link expires in 10 minutes.`;
 
         // 4. Send the email
         try {
             await sendEmail({
                 email: user.email,
-                subject: 'AccessPro Password Reset Token',
+                subject: 'Aahaaram Password Reset Token',
                 message
             });
             res.status(200).json({ message: 'Recovery email sent successfully.' });

@@ -138,7 +138,7 @@ exports.updateUserRole = async (req, res) => {
 exports.generateBulkBadges = async (req, res) => {
     try {
         const count = parseInt(req.query.count) || 50;
-        const secret = process.env.QR_SECRET || 'accesspro_secure_vault_2026';
+        const secret = process.env.QR_SECRET || 'Aahaaram_secure_vault_2026';
         const badges = [];
 
         for (let i = 0; i < count; i++) {
@@ -164,7 +164,7 @@ exports.generateBulkBadges = async (req, res) => {
 exports.pairBadge = async (req, res) => {
     try {
         const { participantId, qrString } = req.body;
-        const secret = process.env.QR_SECRET || 'accesspro_secure_vault_2026';
+        const secret = process.env.QR_SECRET || 'Aahaaram_secure_vault_2026';
 
         if (!qrString || !qrString.includes('-')) {
             return res.status(400).json({ message: 'Invalid badge format.' });

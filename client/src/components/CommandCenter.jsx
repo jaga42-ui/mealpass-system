@@ -71,6 +71,7 @@ const CommandCenter = () => {
     }
   };
 
+  // --- 1. DATA UPLOAD ---
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -157,10 +158,11 @@ const CommandCenter = () => {
     reader.readAsArrayBuffer(file);
   };
 
+  // --- 2. SUMMARY PDF (AAHAARAM UPGRADE) ---
   const generateStatsPDF = async () => {
     try {
       setLoading(true);
-      showMessage("Compiling secure report...", "success");
+      showMessage("Compiling operations report...", "success");
 
       const res = await api.get("/scans/stats");
       const stats = res.data.stats;
@@ -182,7 +184,7 @@ const CommandCenter = () => {
       doc.setFontSize(24);
       doc.setTextColor(20, 184, 166);
       doc.setFont("helvetica", "bold");
-      doc.text("ACCESSPRO", 14, 25);
+      doc.text("AAHAARAM", 14, 25);
 
       doc.setFontSize(14);
       doc.setTextColor(50, 50, 50);
@@ -198,7 +200,7 @@ const CommandCenter = () => {
       doc.setFontSize(11);
       doc.setTextColor(60, 60, 60);
       const introText =
-        "This document provides a comprehensive, cryptographically verified summary of meal fulfillments and badge scan activities recorded across all active terminals for the specified operational period. All data reflects real-time database ledger entries.";
+        "This document provides a comprehensive summary of meal fulfillments and badge scan activities recorded across all active terminals for the specified operational period. All data reflects real-time database ledger entries.";
       const splitIntro = doc.splitTextToSize(introText, 180);
       doc.text(splitIntro, 14, 68);
 
@@ -234,13 +236,13 @@ const CommandCenter = () => {
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.text(
-          `AccessPro Security & Logistics System • Page ${i} of ${pageCount}`,
+          `Aahaaram Operations System • Page ${i} of ${pageCount}`,
           14,
           285,
         );
       }
 
-      doc.save(`AccessPro_EOD_Report_${now.toISOString().split("T")[0]}.pdf`);
+      doc.save(`Aahaaram_EOD_Report_${now.toISOString().split("T")[0]}.pdf`);
       showMessage("Report downloaded.", "success");
     } catch (err) {
       showMessage("Failed to generate report.", "error");
@@ -249,6 +251,7 @@ const CommandCenter = () => {
     }
   };
 
+  // --- 3. DETAILED LOG PDF (AAHAARAM UPGRADE) ---
   const generateDetailedReportPDF = async () => {
     try {
       setLoading(true);
@@ -275,7 +278,7 @@ const CommandCenter = () => {
       doc.setFontSize(20);
       doc.setTextColor(59, 130, 246);
       doc.setFont("helvetica", "bold");
-      doc.text("ACCESSPRO", 14, 22);
+      doc.text("AAHAARAM", 14, 22);
 
       doc.setFontSize(12);
       doc.setTextColor(50, 50, 50);
@@ -318,10 +321,10 @@ const CommandCenter = () => {
       doc.setTextColor(150, 150, 150);
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.text(`AccessPro Audit Ledger • Page ${i} of ${pageCount}`, 14, 285);
+        doc.text(`Aahaaram Audit Ledger • Page ${i} of ${pageCount}`, 14, 285);
       }
 
-      doc.save(`AccessPro_Audit_Ledger_${now.toISOString().split("T")[0]}.pdf`);
+      doc.save(`Aahaaram_Audit_Ledger_${now.toISOString().split("T")[0]}.pdf`);
       showMessage("Audit Ledger downloaded.", "success");
     } catch (err) {
       console.error(err);
@@ -331,77 +334,88 @@ const CommandCenter = () => {
     }
   };
 
-  // --- 🌸 MINIMAL & WELCOMING ANONYMOUS BADGES ---
-    const generateQRPDF = async () => {
-        const count = parseInt(mintCount);
-        if (!count || count < 1) return showMessage('Please enter a valid number.', 'error');
-        
-        setIsMintModalOpen(false); // Close the modal immediately
+  // --- 4. 🌸 MINIMAL & WELCOMING ANONYMOUS BADGES ---
+  const generateQRPDF = async () => {
+    const count = parseInt(mintCount);
+    if (!count || count < 1)
+      return showMessage("Please enter a valid number.", "error");
 
-        try {
-            setLoading(true);
-            showMessage(`Preparing ${count} welcome badges...`, 'success');
-            
-            const res = await api.get(`/admin/generate-badges?count=${count}`);
-            const badges = res.data.badges;
+    setIsMintModalOpen(false);
 
-            if (!badges || badges.length === 0) return showMessage('Failed to create badges.', 'error');
+    try {
+      setLoading(true);
+      showMessage(`Preparing ${count} welcome badges...`, "success");
 
-            const doc = new jsPDF('portrait', 'mm', 'a4');
-            
-            // Perfect A4 Grid Math
-            const cols = 3, rows = 4;
-            const cardW = 50, cardH = 60;
-            const gapX = 10, gapY = 10;
-            const marginX = 20, marginY = 13.5; 
-            const qrSize = 40;
+      const res = await api.get(`/admin/generate-badges?count=${count}`);
+      const badges = res.data.badges;
 
-            let currentItem = 0;
+      if (!badges || badges.length === 0)
+        return showMessage("Failed to create badges.", "error");
 
-            for (let i = 0; i < badges.length; i++) {
-                const qrString = badges[i]; 
+      const doc = new jsPDF("portrait", "mm", "a4");
 
-                if (currentItem > 0 && currentItem % (cols * rows) === 0) { doc.addPage(); currentItem = 0; }
+      const cols = 3,
+        rows = 4;
+      const cardW = 50,
+        cardH = 60;
+      const gapX = 10,
+        gapY = 10;
+      const marginX = 20,
+        marginY = 13.5;
+      const qrSize = 40;
 
-                const colIndex = currentItem % cols;
-                const rowIndex = Math.floor(currentItem / cols);
+      let currentItem = 0;
 
-                const x = marginX + (colIndex * (cardW + gapX)); 
-                const y = marginY + (rowIndex * (cardH + gapY)); 
+      for (let i = 0; i < badges.length; i++) {
+        const qrString = badges[i];
 
-                // 1. Draw Card Outline (Soft gray, just so you know where to cut)
-                doc.setDrawColor(220);
-                doc.roundedRect(x, y, cardW, cardH, 4, 4);
-
-                // 2. Generate Minimal QR Code (No hole punched in the middle!)
-                const qrDataUrl = await QRCode.toDataURL(qrString, { 
-                    margin: 0, 
-                    width: 400,
-                    color: { dark: '#333333', light: '#FFFFFF' } // Soft dark charcoal instead of harsh black
-                });
-                
-                const qrX = x + (cardW - qrSize) / 2;
-                const qrY = y + 7; // Moved down slightly to balance perfectly
-                doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
-
-                // 3. The Only Text: Heart-warming Tagline
-                const centerX = x + (cardW / 2);
-                doc.setFontSize(7); 
-                doc.setTextColor(120, 120, 120); // Gentle gray
-                doc.setFont("helvetica", "italic");
-                doc.text("We're so glad you're here", centerX, y + 53, { align: "center" });
-                
-                currentItem++;
-            }
-            doc.save(`Welcome_Badges_${count}.pdf`);
-            showMessage(`Successfully created ${count} badges.`, 'success');
-        } catch (err) { 
-            showMessage('Generation failed.', 'error'); 
-        } finally { 
-            setLoading(false); 
+        if (currentItem > 0 && currentItem % (cols * rows) === 0) {
+          doc.addPage();
+          currentItem = 0;
         }
-    };
 
+        const colIndex = currentItem % cols;
+        const rowIndex = Math.floor(currentItem / cols);
+
+        const x = marginX + colIndex * (cardW + gapX);
+        const y = marginY + rowIndex * (cardH + gapY);
+
+        // Draw Card Outline
+        doc.setDrawColor(220);
+        doc.roundedRect(x, y, cardW, cardH, 4, 4);
+
+        // Minimalist QR
+        const qrDataUrl = await QRCode.toDataURL(qrString, {
+          margin: 0,
+          width: 400,
+          color: { dark: "#333333", light: "#FFFFFF" },
+        });
+
+        const qrX = x + (cardW - qrSize) / 2;
+        const qrY = y + 7;
+        doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+
+        // Warm Tagline
+        const centerX = x + cardW / 2;
+        doc.setFontSize(7);
+        doc.setTextColor(120, 120, 120);
+        doc.setFont("helvetica", "italic");
+        doc.text("We're so glad you're here", centerX, y + 53, {
+          align: "center",
+        });
+
+        currentItem++;
+      }
+      doc.save(`Welcome_Badges_${count}.pdf`);
+      showMessage(`Successfully created ${count} badges.`, "success");
+    } catch (err) {
+      showMessage("Generation failed.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- 5. PURGE DATABASE ---
   const executePurge = async () => {
     if (purgeConfirmText !== "PURGE") return;
     setIsPurging(true);
@@ -424,6 +438,7 @@ const CommandCenter = () => {
 
   return (
     <div className="animate-enter w-full max-w-md mx-auto pb-24 px-4 relative z-20">
+      {/* HEADER */}
       <div className="sticky top-16 z-30 pt-4 pb-4 bg-slate-950/90 backdrop-blur-xl border-b border-white/5 mx-[-1rem] px-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
         <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
           <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/30 rounded-[0.8rem] flex items-center justify-center shadow-inner">
@@ -433,6 +448,7 @@ const CommandCenter = () => {
         </h2>
       </div>
 
+      {/* ALERTS */}
       {message && (
         <div
           className={`fixed top-32 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-[100] px-5 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-center backdrop-blur-xl shadow-2xl animate-enter border ${message.type === "error" ? "bg-rose-500/90 border-rose-400 text-white" : "bg-teal-500/90 border-teal-400 text-white"}`}
@@ -442,7 +458,7 @@ const CommandCenter = () => {
       )}
 
       <div className="space-y-5 mt-6">
-        {/* 🎛️ SETTINGS */}
+        {/* SETTINGS BLOCK */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem]">
           <h3 className="font-black text-white text-base mb-4 flex items-center gap-2">
             <i className="ph-bold ph-faders text-teal-400"></i> Overrides
@@ -513,7 +529,7 @@ const CommandCenter = () => {
           </div>
         </div>
 
-        {/* 💾 DATA OPS */}
+        {/* DATA OPS BLOCK */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem]">
           <h3 className="font-black text-white text-base mb-4 flex items-center gap-2">
             <i className="ph-bold ph-database text-blue-400"></i> Data Ops
@@ -571,7 +587,7 @@ const CommandCenter = () => {
           </div>
         </div>
 
-        {/* 👥 STAFF ACCESS */}
+        {/* STAFF ACCESS BLOCK */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem]">
           <h3 className="font-black text-white text-base mb-4 flex items-center gap-2">
             <i className="ph-bold ph-shield-check text-purple-400"></i> Staff
@@ -627,7 +643,7 @@ const CommandCenter = () => {
           </div>
         </div>
 
-        {/* 🚨 DANGER ZONE */}
+        {/* DANGER ZONE */}
         <div className="bg-rose-950/20 border border-rose-500/20 p-5 rounded-[2rem] mt-4">
           <h3 className="font-black text-rose-500 text-base mb-1 flex items-center gap-2">
             <i className="ph-bold ph-warning-octagon text-rose-400"></i> Danger
@@ -645,7 +661,7 @@ const CommandCenter = () => {
         </div>
       </div>
 
-      {/* 🖨️ MINT BADGES MODAL */}
+      {/* MINT BADGES MODAL */}
       {isMintModalOpen && (
         <div className="fixed inset-0 z-[200] flex flex-col justify-end bg-slate-950/80 backdrop-blur-sm p-4 animate-enter">
           <div className="bg-slate-900 border border-teal-500/50 w-full max-w-md mx-auto rounded-[2.5rem] p-6 shadow-2xl relative">
@@ -654,10 +670,10 @@ const CommandCenter = () => {
             </div>
 
             <h3 className="text-xl font-black text-white text-center mb-1">
-              Mint Secure Badges
+              Print Welcome Badges
             </h3>
             <p className="text-[10px] text-teal-400/80 font-bold uppercase tracking-[0.1em] text-center mb-6">
-              Enter the number of cryptographic IDs to generate.
+              Enter the number of blank IDs to generate.
             </p>
 
             <div className="bg-black/40 p-4 rounded-[1.5rem] border border-teal-500/20 mb-6">
@@ -690,7 +706,7 @@ const CommandCenter = () => {
         </div>
       )}
 
-      {/* 🚨 MOBILE PURGE SHEET */}
+      {/* PURGE CONFIRMATION SHEET */}
       {isPurgeModalOpen && (
         <div className="fixed inset-0 z-[200] flex flex-col justify-end bg-slate-950/80 backdrop-blur-sm p-4 animate-enter">
           <div className="bg-slate-900 border border-rose-500/50 w-full max-w-md mx-auto rounded-[2.5rem] p-6 shadow-2xl relative">
