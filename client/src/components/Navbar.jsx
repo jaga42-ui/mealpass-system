@@ -57,7 +57,7 @@ const Navbar = () => {
               <NavLink to="/roster" className={navLinkClass}>
                 <i className="ph-bold ph-users text-2xl mb-1"></i>
                 <span className="text-[8px] font-black uppercase tracking-widest">
-                  Guest List
+                  Check-in Desk
                 </span>
               </NavLink>
 
