@@ -52,7 +52,6 @@ const ParticipantList = () => {
     fetchParticipants();
   }, []);
 
-  // Reset lazy load count when searching or filtering
   useEffect(() => {
     setDisplayCount(20);
   }, [searchTerm, activeFilter]);
@@ -68,7 +67,6 @@ const ParticipantList = () => {
     });
   }, [participants, searchTerm, activeFilter]);
 
-  // 🚀 THE LAZY LOADER ENGINE: Watches the last card and loads more when you scroll to it
   const lastParticipantRef = useCallback(
     (node) => {
       if (loading) return;
@@ -88,7 +86,6 @@ const ParticipantList = () => {
     [loading, displayCount, filteredParticipants.length],
   );
 
-  // --- 🛡️ PAIRING LOGIC ---
   const openPairingModal = (user) => {
     setPairingUser(user);
     setPairResult(null);
@@ -163,7 +160,6 @@ const ParticipantList = () => {
     }
   };
 
-  // --- 🚶 WALKIN LOGIC ---
   const handleWalkinAction = async (action = "link") => {
     if (!walkinData.name.trim()) return;
     setIsSubmitting(true);
@@ -192,7 +188,6 @@ const ParticipantList = () => {
     }
   };
 
-  // --- 👑 GOD MODE LOGIC ---
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Delete ${name}?`)) return;
     try {
@@ -249,9 +244,9 @@ const ParticipantList = () => {
   if (loading && participants.length === 0)
     return (
       <div className="flex flex-col items-center justify-center py-32 animate-pulse">
-        <div className="w-12 h-12 border-4 border-white/10 border-t-teal-400 rounded-full animate-spin shadow-[0_0_30px_rgba(45,212,191,0.5)]"></div>
-        <p className="mt-6 text-[10px] font-black uppercase tracking-[0.2em] text-teal-400/80">
-          Decrypting Roster...
+        <div className="w-12 h-12 border-4 border-stone-800 border-t-emerald-500 rounded-full animate-spin"></div>
+        <p className="mt-6 text-[10px] font-black uppercase tracking-[0.2em] text-stone-500">
+          Loading Check-in Desk...
         </p>
       </div>
     );
@@ -259,201 +254,204 @@ const ParticipantList = () => {
   const categories = ["All", "Participant", "Volunteer", "Guest"];
 
   return (
-    <div className="flex flex-col h-full animate-enter w-full max-w-md mx-auto pb-24 relative z-20">
-      {/* 💎 ULTRA-SLEEK GLASS HEADER */}
-      <div className="sticky top-16 z-30 pt-2 pb-5 bg-slate-950/80 backdrop-blur-2xl mx-[-1rem] px-4 shadow-[0_20px_40px_rgba(0,0,0,0.8)] border-b border-white/5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-black text-white text-xl flex items-center gap-3 tracking-wide">
-            <div className="w-10 h-10 bg-teal-500/10 border border-teal-500/30 rounded-xl flex items-center justify-center shadow-inner">
-              <i className="ph-fill ph-users-three text-teal-400 text-xl"></i>
-            </div>
-            Live Roster
-          </h3>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsWalkinOpen(true)}
-              className="w-10 h-10 rounded-xl bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.4)] flex items-center justify-center hover:bg-teal-400 active:scale-95 transition-all"
-            >
-              <i className="ph-bold ph-plus text-lg"></i>
-            </button>
-            <button
-              onClick={fetchParticipants}
-              className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 text-teal-400 hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center shadow-inner"
-            >
-              <i className="ph-bold ph-arrows-clockwise text-lg"></i>
-            </button>
-          </div>
-        </div>
-
-        {/* Cyber-Search Bar */}
-        <div className="relative mb-4 group">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <i className="ph-bold ph-magnifying-glass text-slate-500 text-lg group-focus-within:text-teal-400 transition-colors"></i>
-          </div>
-          <input
-            type="text"
-            placeholder="Search records..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900/80 border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-white font-bold placeholder-slate-600 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all shadow-inner text-sm"
-          />
-        </div>
-
-        {/* Neon Pill Filters */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveFilter(cat)}
-              className={`whitespace-nowrap px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 active:scale-95 border ${
-                activeFilter === cat
-                  ? "bg-teal-500 border-teal-400 text-white shadow-[0_0_20px_rgba(20,184,166,0.4)]"
-                  : "bg-slate-900 border-white/5 text-slate-400 hover:bg-slate-800 hover:text-teal-200"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 📜 LAZY-LOADED LIST AREA */}
-      <div className="mt-6 space-y-3 px-1">
-        <div className="flex justify-between items-center mb-3 px-1">
-          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-            Displaying {Math.min(displayCount, filteredParticipants.length)} of{" "}
-            {filteredParticipants.length}
-          </span>
-        </div>
-
-        {filteredParticipants.length === 0 ? (
-          <div className="bg-slate-900/50 backdrop-blur-xl py-12 rounded-[2rem] text-center text-slate-500 font-bold border border-white/5 shadow-inner">
-            <i className="ph-duotone ph-ghost text-5xl mb-3 opacity-30"></i>
-            <p className="text-[10px] uppercase tracking-[0.2em]">
-              No records found.
-            </p>
-          </div>
-        ) : (
-          filteredParticipants.slice(0, displayCount).map((p, index) => {
-            const isLastElement = index === displayCount - 1;
-
-            return (
-              <div
-                key={p._id}
-                ref={isLastElement ? lastParticipantRef : null}
-                className="group bg-slate-900/60 backdrop-blur-md rounded-[1.5rem] border border-white/5 overflow-hidden transition-all duration-300 hover:border-teal-500/30 hover:bg-slate-800/80 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)] relative"
+    // 🚀 FIX: Wrapping everything in a Fragment so Modals are NOT inside the animated container
+    <>
+      <div className="flex flex-col h-full w-full max-w-md mx-auto pb-24 relative z-20 animate-enter">
+        {/* 🌿 ORGANIC GLASS HEADER */}
+        <div className="sticky top-16 z-30 pt-2 pb-5 bg-stone-950/90 backdrop-blur-2xl mx-[-1rem] px-4 shadow-xl border-b border-stone-800/50">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-black text-stone-100 text-xl flex items-center gap-3 tracking-wide">
+              <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center">
+                <i className="ph-fill ph-users-three text-emerald-500 text-xl"></i>
+              </div>
+              Check-in Desk
+            </h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsWalkinOpen(true)}
+                className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center hover:bg-emerald-500 active:scale-95 transition-all shadow-md shadow-emerald-900/50"
               >
-                {/* Left Accent Line */}
+                <i className="ph-bold ph-plus text-lg"></i>
+              </button>
+              <button
+                onClick={fetchParticipants}
+                className="w-10 h-10 rounded-xl bg-stone-900 border border-stone-800 text-emerald-500 hover:bg-stone-800 active:scale-95 transition-all flex items-center justify-center"
+              >
+                <i className="ph-bold ph-arrows-clockwise text-lg"></i>
+              </button>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative mb-4 group">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+              <i className="ph-bold ph-magnifying-glass text-stone-500 text-lg group-focus-within:text-emerald-500 transition-colors"></i>
+            </div>
+            <input
+              type="text"
+              placeholder="Search records..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-stone-900 border border-stone-800 rounded-2xl py-3.5 pl-12 pr-4 text-stone-200 font-medium placeholder-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all text-sm"
+            />
+          </div>
+
+          {/* Category Filters */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveFilter(cat)}
+                className={`whitespace-nowrap px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all duration-300 active:scale-95 border ${
+                  activeFilter === cat
+                    ? "bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-900/30"
+                    : "bg-stone-900 border-stone-800 text-stone-400 hover:bg-stone-800 hover:text-stone-200"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 📜 LIST AREA */}
+        <div className="mt-6 space-y-3 px-1">
+          <div className="flex justify-between items-center mb-3 px-1">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">
+              Displaying {Math.min(displayCount, filteredParticipants.length)}{" "}
+              of {filteredParticipants.length}
+            </span>
+          </div>
+
+          {filteredParticipants.length === 0 ? (
+            <div className="bg-stone-900/50 py-12 rounded-[2rem] text-center text-stone-600 font-medium border border-stone-800/50">
+              <i className="ph-duotone ph-ghost text-5xl mb-3 opacity-50"></i>
+              <p className="text-[10px] uppercase tracking-[0.2em]">
+                No records found.
+              </p>
+            </div>
+          ) : (
+            filteredParticipants.slice(0, displayCount).map((p, index) => {
+              const isLastElement = index === displayCount - 1;
+
+              return (
                 <div
-                  className={`absolute left-0 top-0 bottom-0 w-1 ${p.qrId ? "bg-teal-500" : "bg-amber-500"}`}
-                ></div>
+                  key={p._id}
+                  ref={isLastElement ? lastParticipantRef : null}
+                  className="group bg-stone-900 rounded-[1.5rem] border border-stone-800 overflow-hidden transition-all duration-300 hover:border-emerald-500/30 hover:bg-stone-800/80 relative shadow-sm"
+                >
+                  <div
+                    className={`absolute left-0 top-0 bottom-0 w-1 ${p.qrId ? "bg-emerald-500" : "bg-amber-500"}`}
+                  ></div>
 
-                <div className="p-4 pl-5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 pr-3">
-                      <h4 className="font-black text-white text-base tracking-wide leading-tight mb-1 truncate">
-                        {p.name}
-                      </h4>
+                  <div className="p-4 pl-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 pr-3">
+                        <h4 className="font-bold text-stone-200 text-base tracking-wide leading-tight mb-1 truncate">
+                          {p.name}
+                        </h4>
 
-                      <div className="flex items-center gap-2 flex-wrap mt-2">
-                        <span
-                          className={`text-[8px] font-black uppercase tracking-[0.1em] px-2 py-1 rounded-md border ${
-                            p.category === "Volunteer"
-                              ? "bg-purple-500/10 border-purple-500/30 text-purple-400"
-                              : p.category === "Guest"
-                                ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                                : "bg-teal-500/10 border-teal-500/30 text-teal-400"
-                          }`}
-                        >
-                          {p.category}
-                        </span>
-
-                        {p.qrId ? (
-                          <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest bg-slate-950 border border-white/10 px-2 py-1 rounded-md flex items-center gap-1">
-                            <i className="ph-bold ph-check-circle text-teal-500"></i>{" "}
-                            {p.qrId.split("-")[0]}
+                        <div className="flex items-center gap-2 flex-wrap mt-2">
+                          <span
+                            className={`text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-md border ${
+                              p.category === "Volunteer"
+                                ? "bg-purple-500/10 border-purple-500/20 text-purple-400"
+                                : p.category === "Guest"
+                                  ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                                  : "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
+                            }`}
+                          >
+                            {p.category}
                           </span>
-                        ) : (
-                          <span className="text-[8px] font-black text-amber-400/80 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md flex items-center gap-1 animate-pulse">
-                            <i className="ph-bold ph-warning"></i> No Badge
-                          </span>
-                        )}
+
+                          {p.qrId ? (
+                            <span className="text-[9px] font-bold text-stone-400 uppercase tracking-widest bg-stone-950 border border-stone-800 px-2 py-1 rounded-md flex items-center gap-1">
+                              <i className="ph-bold ph-check-circle text-emerald-500"></i>{" "}
+                              {p.qrId.split("-")[0]}
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md flex items-center gap-1 animate-pulse">
+                              <i className="ph-bold ph-warning"></i> No Badge
+                            </span>
+                          )}
+                        </div>
                       </div>
+
+                      <button
+                        onClick={() => handleToggleStatus(p._id, p.isApproved)}
+                        className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all border ${p.isApproved ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-stone-950 text-stone-600 border-stone-800"}`}
+                      >
+                        <i
+                          className={`ph-fill text-xl ${p.isApproved ? "ph-check-circle" : "ph-circle"}`}
+                        ></i>
+                      </button>
                     </div>
 
-                    {/* Status Toggle (Right Aligned) */}
-                    <button
-                      onClick={() => handleToggleStatus(p._id, p.isApproved)}
-                      className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-inner border ${p.isApproved ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-slate-950 text-slate-500 border-white/5"}`}
-                    >
-                      <i
-                        className={`ph-fill text-xl ${p.isApproved ? "ph-check-circle" : "ph-circle"}`}
-                      ></i>
-                    </button>
-                  </div>
-
-                  {/* Action Dock (Minimalist Grid) */}
-                  <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/5">
-                    {p.qrId ? (
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-stone-800/50">
+                      {p.qrId ? (
+                        <button
+                          onClick={() => handleUnlink(p._id)}
+                          className="py-2.5 bg-stone-950 rounded-xl text-[9px] font-bold uppercase text-stone-500 hover:text-amber-500 hover:bg-stone-900 transition-all flex items-center justify-center gap-1.5 border border-stone-800"
+                        >
+                          <i className="ph-bold ph-link-break text-sm"></i>{" "}
+                          Unlink
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => openPairingModal(p)}
+                          className="py-2.5 bg-emerald-600/10 rounded-xl text-[9px] font-bold uppercase text-emerald-500 hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-1.5 border border-emerald-500/20 active:scale-95"
+                        >
+                          <i className="ph-bold ph-qr-code text-sm"></i> Link
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleUnlink(p._id)}
-                        className="py-2.5 bg-slate-950 rounded-xl text-[9px] font-bold uppercase text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all flex items-center justify-center gap-1.5 border border-white/5"
+                        onClick={() => openEditModal(p)}
+                        className="py-2.5 bg-stone-950 rounded-xl text-[9px] font-bold uppercase text-stone-500 hover:text-blue-400 hover:bg-stone-900 transition-all flex items-center justify-center gap-1.5 border border-stone-800"
                       >
-                        <i className="ph-bold ph-link-break text-sm"></i> Unlink
+                        <i className="ph-bold ph-pencil-simple text-sm"></i>{" "}
+                        Edit
                       </button>
-                    ) : (
                       <button
-                        onClick={() => openPairingModal(p)}
-                        className="py-2.5 bg-teal-500/10 rounded-xl text-[9px] font-black uppercase text-teal-400 hover:bg-teal-500 hover:text-white transition-all flex items-center justify-center gap-1.5 border border-teal-500/30 shadow-[0_0_10px_rgba(20,184,166,0.1)] active:scale-95"
+                        onClick={() => handleDelete(p._id, p.name)}
+                        className="py-2.5 bg-stone-950 rounded-xl text-[9px] font-bold uppercase text-stone-500 hover:text-rose-500 hover:bg-stone-900 transition-all flex items-center justify-center gap-1.5 border border-stone-800"
                       >
-                        <i className="ph-bold ph-qr-code text-sm"></i> Link Now
+                        <i className="ph-bold ph-trash text-sm"></i> Delete
                       </button>
-                    )}
-                    <button
-                      onClick={() => openEditModal(p)}
-                      className="py-2.5 bg-slate-950 rounded-xl text-[9px] font-bold uppercase text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all flex items-center justify-center gap-1.5 border border-white/5"
-                    >
-                      <i className="ph-bold ph-pencil-simple text-sm"></i> Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p._id, p.name)}
-                      className="py-2.5 bg-slate-950 rounded-xl text-[9px] font-bold uppercase text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all flex items-center justify-center gap-1.5 border border-white/5"
-                    >
-                      <i className="ph-bold ph-trash text-sm"></i> Delete
-                    </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
-        )}
+              );
+            })
+          )}
 
-        {/* Lazy Load Spinner at bottom */}
-        {displayCount < filteredParticipants.length && (
-          <div className="py-8 flex justify-center">
-            <div className="w-6 h-6 border-2 border-white/10 border-t-teal-500 rounded-full animate-spin"></div>
-          </div>
-        )}
+          {displayCount < filteredParticipants.length && (
+            <div className="py-8 flex justify-center">
+              <div className="w-6 h-6 border-2 border-stone-800 border-t-emerald-500 rounded-full animate-spin"></div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* 🚀 FIX: Modals are now strictly attached to the viewport */}
 
       {/* 🛡️ PAIRING CAMERA MODAL */}
       {pairingUser && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-2xl p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/95 backdrop-blur-xl p-6">
           <div className="w-full max-w-sm flex flex-col items-center animate-enter">
             <div className="text-center mb-8 z-10">
-              <h2 className="text-2xl font-black text-white tracking-widest">
+              <h2 className="text-2xl font-black text-stone-100 tracking-widest">
                 ASSIGN BADGE
               </h2>
-              <p className="text-teal-400 font-bold uppercase tracking-[0.2em] mt-2 text-[10px] bg-teal-500/10 px-3 py-1 rounded-full border border-teal-500/20 inline-block">
+              <p className="text-emerald-500 font-bold uppercase tracking-widest mt-2 text-[10px] bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 inline-block">
                 {pairingUser.name}
               </p>
             </div>
 
-            <div className="relative w-full max-w-[280px] aspect-square bg-black rounded-[2rem] overflow-hidden shadow-[0_0_50px_rgba(20,184,166,0.3)] border border-teal-500/30 z-10">
-              <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-teal-500 pointer-events-none z-10 rounded-tl-lg"></div>
-              <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-teal-500 pointer-events-none z-10 rounded-tr-lg"></div>
-              <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-teal-500 pointer-events-none z-10 rounded-bl-lg"></div>
-              <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-teal-500 pointer-events-none z-10 rounded-br-lg"></div>
+            <div className="relative w-full max-w-[280px] aspect-square bg-stone-900 rounded-[2rem] overflow-hidden border border-emerald-500/30 shadow-2xl z-10">
+              <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-emerald-500 pointer-events-none z-10 rounded-tl-lg"></div>
+              <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-emerald-500 pointer-events-none z-10 rounded-tr-lg"></div>
+              <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-emerald-500 pointer-events-none z-10 rounded-bl-lg"></div>
+              <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-emerald-500 pointer-events-none z-10 rounded-br-lg"></div>
               <div
                 id="pair-reader"
                 className="w-full h-full object-cover"
@@ -462,37 +460,37 @@ const ParticipantList = () => {
 
             <button
               onClick={stopCamera}
-              className="mt-10 px-8 py-4 bg-white/5 text-slate-400 hover:text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl hover:bg-white/10 transition-all z-10 border border-white/5 shadow-inner"
+              className="mt-10 px-8 py-4 bg-stone-900 text-stone-400 hover:text-stone-200 font-bold uppercase tracking-widest text-[10px] rounded-2xl hover:bg-stone-800 transition-all z-10 border border-stone-800"
             >
               Cancel Scanning
             </button>
 
             {pairResult && (
-              <div className="absolute inset-0 z-[110] flex items-center justify-center bg-slate-950/90 p-6 animate-enter">
+              <div className="absolute inset-0 z-[110] flex items-center justify-center bg-stone-950/90 p-6 animate-enter">
                 <div
-                  className={`bg-slate-900 w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.8)] border ${pairResult.type === "success" ? "border-emerald-500/50" : "border-rose-500/50"}`}
+                  className={`bg-stone-900 w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl border ${pairResult.type === "success" ? "border-emerald-500/50" : "border-rose-500/50"}`}
                 >
                   <div className="p-8 text-center">
                     <div
-                      className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 border-4 shadow-inner ${pairResult.type === "success" ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-rose-500/10 border-rose-500/30 text-rose-400"}`}
+                      className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 border-4 ${pairResult.type === "success" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-rose-500/10 border-rose-500/20 text-rose-500"}`}
                     >
                       <i
                         className={`ph-fill text-4xl ${pairResult.type === "success" ? "ph-check" : "ph-x"}`}
                       ></i>
                     </div>
                     <h3
-                      className={`text-xl font-black tracking-widest ${pairResult.type === "success" ? "text-emerald-400" : "text-rose-400"}`}
+                      className={`text-xl font-black tracking-widest ${pairResult.type === "success" ? "text-emerald-500" : "text-rose-500"}`}
                     >
                       {pairResult.title}
                     </h3>
-                    <p className="text-[10px] font-bold mt-3 text-slate-400 uppercase tracking-widest leading-relaxed">
+                    <p className="text-[10px] font-medium mt-3 text-stone-400 uppercase tracking-widest leading-relaxed">
                       {pairResult.message}
                     </p>
                   </div>
-                  <div className="p-4 bg-black/40">
+                  <div className="p-4 bg-stone-950/50">
                     <button
                       onClick={handleNextAction}
-                      className={`w-full py-4 text-white font-black tracking-[0.2em] uppercase text-[10px] rounded-2xl active:scale-95 transition-all shadow-lg ${pairResult.type === "success" ? "bg-emerald-500 hover:bg-emerald-400" : "bg-rose-500 hover:bg-rose-400"}`}
+                      className={`w-full py-4 text-white font-bold tracking-widest uppercase text-[10px] rounded-2xl active:scale-95 transition-all ${pairResult.type === "success" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-rose-600 hover:bg-rose-500"}`}
                     >
                       {pairResult.type === "success" ? "Complete" : "Try Again"}
                     </button>
@@ -506,15 +504,15 @@ const ParticipantList = () => {
 
       {/* 🚶 WALK-IN & ✏️ EDIT MODALS */}
       {(isWalkinOpen || isEditOpen) && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-6">
-          <div className="w-full max-w-sm bg-slate-900 rounded-[2.5rem] border border-white/10 p-8 shadow-[0_30px_60px_rgba(0,0,0,0.8)] animate-enter relative overflow-hidden">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-stone-950/90 backdrop-blur-xl p-6">
+          <div className="w-full max-w-sm bg-stone-900 rounded-[2.5rem] border border-stone-800 p-8 shadow-2xl animate-enter relative overflow-hidden">
             <div
-              className={`absolute top-0 left-0 w-full h-1 ${isWalkinOpen ? "bg-teal-500" : "bg-blue-500"}`}
+              className={`absolute top-0 left-0 w-full h-1 ${isWalkinOpen ? "bg-emerald-500" : "bg-blue-500"}`}
             ></div>
 
-            <h3 className="text-xl font-black text-white mb-6 flex items-center gap-3 tracking-widest uppercase">
+            <h3 className="text-xl font-black text-stone-100 mb-6 flex items-center gap-3 tracking-widest uppercase">
               <i
-                className={`ph-fill text-2xl ${isWalkinOpen ? "ph-user-plus text-teal-400" : "ph-pencil-line text-blue-400"}`}
+                className={`ph-fill text-2xl ${isWalkinOpen ? "ph-user-plus text-emerald-500" : "ph-pencil-line text-blue-500"}`}
               ></i>
               {isWalkinOpen ? "Walk-in" : "Edit Record"}
             </h3>
@@ -527,7 +525,7 @@ const ParticipantList = () => {
               className="space-y-5"
             >
               <div>
-                <label className="text-[9px] font-black uppercase text-slate-500 ml-1 tracking-[0.2em] mb-1.5 block">
+                <label className="text-[9px] font-bold uppercase text-stone-500 ml-1 tracking-widest mb-1.5 block">
                   Full Name
                 </label>
                 <input
@@ -538,12 +536,12 @@ const ParticipantList = () => {
                       ? setWalkinData({ ...walkinData, name: e.target.value })
                       : setEditData({ ...editData, name: e.target.value })
                   }
-                  className="w-full bg-black/50 border border-white/10 rounded-2xl py-4 px-5 text-white font-bold focus:border-teal-400 focus:outline-none focus:ring-1 focus:ring-teal-500/50 transition-all shadow-inner"
+                  className="w-full bg-stone-950/50 border border-stone-800 rounded-2xl py-4 px-5 text-stone-200 font-medium focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 transition-all"
                   placeholder="Enter name..."
                 />
               </div>
               <div>
-                <label className="text-[9px] font-black uppercase text-slate-500 ml-1 tracking-[0.2em] mb-1.5 block">
+                <label className="text-[9px] font-bold uppercase text-stone-500 ml-1 tracking-widest mb-1.5 block">
                   Category
                 </label>
                 <select
@@ -556,7 +554,7 @@ const ParticipantList = () => {
                         })
                       : setEditData({ ...editData, category: e.target.value })
                   }
-                  className="w-full bg-black/50 border border-white/10 rounded-2xl py-4 px-5 text-white font-bold focus:border-teal-400 focus:outline-none appearance-none shadow-inner"
+                  className="w-full bg-stone-950/50 border border-stone-800 rounded-2xl py-4 px-5 text-stone-200 font-medium focus:border-emerald-500 focus:outline-none appearance-none"
                 >
                   <option value="Participant">Participant</option>
                   <option value="Volunteer">Volunteer</option>
@@ -569,7 +567,7 @@ const ParticipantList = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting || !walkinData.name}
-                    className="w-full py-4 bg-teal-500 hover:bg-teal-400 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-[0_0_20px_rgba(20,184,166,0.3)] active:scale-95 transition-all"
+                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase text-[10px] tracking-widest rounded-2xl active:scale-95 transition-all"
                   >
                     {isSubmitting ? "Processing..." : "Add & Scan Badge"}
                   </button>
@@ -580,7 +578,7 @@ const ParticipantList = () => {
                         setIsWalkinOpen(false);
                         setWalkinData({ name: "", category: "Participant" });
                       }}
-                      className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[9px] tracking-widest rounded-2xl hover:bg-white/10 transition-all"
+                      className="flex-1 py-4 bg-stone-950 text-stone-500 font-bold uppercase text-[9px] tracking-widest rounded-2xl hover:text-stone-300 transition-all border border-stone-800"
                     >
                       Cancel
                     </button>
@@ -588,7 +586,7 @@ const ParticipantList = () => {
                       type="button"
                       onClick={() => handleWalkinAction("close")}
                       disabled={isSubmitting || !walkinData.name}
-                      className="flex-1 py-4 bg-slate-800 text-teal-400 border border-teal-500/20 font-black uppercase text-[9px] tracking-widest rounded-2xl active:scale-95 transition-all"
+                      className="flex-1 py-4 bg-stone-800 text-emerald-500 font-bold uppercase text-[9px] tracking-widest rounded-2xl active:scale-95 transition-all"
                     >
                       Save Only
                     </button>
@@ -599,14 +597,14 @@ const ParticipantList = () => {
                   <button
                     type="button"
                     onClick={() => setIsEditOpen(false)}
-                    className="flex-1 py-4 bg-white/5 text-slate-400 font-black uppercase text-[9px] tracking-widest rounded-2xl hover:bg-white/10 transition-all"
+                    className="flex-1 py-4 bg-stone-950 border border-stone-800 text-stone-500 hover:text-stone-300 font-bold uppercase text-[9px] tracking-widest rounded-2xl transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 py-4 bg-blue-500 text-white font-black uppercase text-[9px] tracking-widest rounded-2xl shadow-[0_0_20px_rgba(59,130,246,0.3)] active:scale-95 transition-all"
+                    className="flex-1 py-4 bg-blue-600 text-white font-bold uppercase text-[9px] tracking-widest rounded-2xl active:scale-95 transition-all"
                   >
                     Save
                   </button>
@@ -616,7 +614,7 @@ const ParticipantList = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
