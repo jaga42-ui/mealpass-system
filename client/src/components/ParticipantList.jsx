@@ -17,6 +17,7 @@ const ParticipantList = () => {
 
   // --- 🛡️ PAIRING SCANNER ---
   const [pairingUser, setPairingUser] = useState(null);
+  const pairingUserRef = useRef(null); // 🚀 THE FIX: The synchronous memory lock
   const [isScanning, setIsScanning] = useState(false);
   const [pairResult, setPairResult] = useState(null);
   const scannerRef = useRef(null);
@@ -88,6 +89,7 @@ const ParticipantList = () => {
 
   const openPairingModal = (user) => {
     setPairingUser(user);
+    pairingUserRef.current = user; // 🚀 Instantly save the user in memory
     setPairResult(null);
     setTimeout(() => {
       startCamera();
@@ -126,6 +128,7 @@ const ParticipantList = () => {
     setIsScanning(false);
     scannerRef.current = null;
     setPairingUser(null);
+    pairingUserRef.current = null; // 🚀 Clear the memory
     setPairResult(null);
   };
 
@@ -133,7 +136,7 @@ const ParticipantList = () => {
     if (scannerRef.current) scannerRef.current.pause();
     try {
       const response = await api.post("/admin/pair-badge", {
-        participantId: pairingUser._id,
+        participantId: pairingUserRef.current._id, // 🚀 Pulling directly from the synchronous ref
         qrString: decodedText.trim(),
       });
       setPairResult({
@@ -143,7 +146,6 @@ const ParticipantList = () => {
       });
       fetchParticipants();
     } catch (error) {
-      // 🚀 THE CONFESSION FIX: Forcing it to show raw connection errors
       setPairResult({
         type: "error",
         title: "CONNECTION FAILED",
