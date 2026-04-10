@@ -4,65 +4,104 @@ const Landing = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen w-full bg-stone-950 flex flex-col items-center justify-center p-6 font-sans relative overflow-hidden">
-      {/* 🌅 Warm, Organic Ambient Lighting (No harsh neon) */}
-      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+    <div className="min-h-screen w-full bg-stone-950 flex flex-col items-center font-sans relative overflow-x-hidden overflow-y-auto py-12 px-4">
+      
+      {/* 🌅 Warm, Organic Ambient Lighting */}
+      <div className="absolute top-[-5%] right-[-10%] w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[10%] left-[-10%] w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
-      <div className="w-full max-w-sm animate-enter relative z-10 flex flex-col items-center">
+      <div className="w-full max-w-md animate-enter relative z-10 flex flex-col items-center mt-6 sm:mt-12">
+        
         {/* 🌿 Welcoming Logo */}
-        <div className="w-20 h-20 bg-stone-900 border border-stone-800 rounded-3xl flex items-center justify-center shadow-2xl mb-8">
+        <div className="w-20 h-20 bg-stone-900 border border-stone-800 rounded-3xl flex items-center justify-center shadow-2xl mb-6">
           <i className="ph-duotone ph-bowl-food text-5xl text-emerald-500"></i>
         </div>
 
+        {/* 🖋️ Tagline & Header */}
         <h1 className="text-4xl font-black text-stone-100 tracking-tight mb-2">
           Aahaaram
         </h1>
+        <h2 className="text-emerald-500 font-bold uppercase tracking-[0.2em] text-[9px] mb-6 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+          Dignity in Logistics
+        </h2>
 
-        <p className="text-sm font-medium text-stone-400 mb-10 text-center max-w-[250px] leading-relaxed">
-          Seamless meal distribution and community event logistics.
+        <p className="text-sm font-medium text-stone-400 mb-10 text-center leading-relaxed px-2">
+          A decentralized, zero-friction operating system for community kitchens, disaster relief, and large-scale meal distribution.
         </p>
 
-        {/* 🎟️ Primary Action: Attendees */}
-        <div className="w-full mb-6">
-          <button
-            onClick={() => navigate("/pass")}
-            className="w-full py-4 bg-emerald-600 text-white font-bold text-sm rounded-2xl shadow-[0_10px_30px_rgba(5,150,105,0.2)] hover:bg-emerald-500 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2"
-          >
-            <i className="ph-bold ph-qr-code text-lg"></i>
-            Access My Pass
-          </button>
-        </div>
-
-        {/* 📋 Secondary Actions: Staff & Organization */}
-        <div className="w-full bg-stone-900/50 backdrop-blur-md border border-stone-800/50 rounded-3xl p-2 flex flex-col gap-2">
+        {/* 🚪 Auth Actions (Strictly Org/Staff) */}
+        <div className="w-full flex flex-col gap-3 mb-16">
           <button
             onClick={() => navigate("/login")}
-            className="w-full py-3.5 px-4 bg-stone-900 text-stone-300 font-semibold text-sm rounded-2xl border border-stone-800 hover:bg-stone-800 hover:text-white active:scale-95 transition-all duration-300 flex items-center justify-between group"
+            className="w-full py-4 bg-emerald-600 text-white font-bold text-sm rounded-2xl shadow-[0_10px_30px_rgba(5,150,105,0.2)] hover:bg-emerald-500 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2"
           >
-            <div className="flex items-center gap-3">
-              <i className="ph-duotone ph-user-circle text-xl text-stone-500 group-hover:text-emerald-400 transition-colors"></i>
-              Staff Login
-            </div>
-            <i className="ph-bold ph-caret-right text-stone-600 group-hover:text-stone-400 transition-colors"></i>
+            <i className="ph-bold ph-sign-in text-lg"></i>
+            Staff Sign In
           </button>
 
           <button
             onClick={() => navigate("/signup")}
-            className="w-full py-3.5 px-4 bg-transparent text-stone-400 font-semibold text-sm rounded-2xl hover:bg-stone-800/50 hover:text-stone-200 active:scale-95 transition-all duration-300 flex items-center justify-between group"
+            className="w-full py-4 bg-stone-900 text-stone-300 font-bold text-sm rounded-2xl border border-stone-800 hover:bg-stone-800 hover:text-white active:scale-95 transition-all duration-300 flex items-center justify-center gap-2"
           >
-            <div className="flex items-center gap-3">
-              <i className="ph-duotone ph-buildings text-xl text-stone-500 group-hover:text-amber-400 transition-colors"></i>
-              Register Organization
-            </div>
-            <i className="ph-bold ph-caret-right text-stone-600 group-hover:text-stone-400 transition-colors"></i>
+            <i className="ph-bold ph-buildings text-lg"></i>
+            Register Organization
           </button>
         </div>
 
-        <div className="mt-10 flex items-center gap-2 text-stone-600 text-xs font-medium">
-          <i className="ph-fill ph-leaf text-emerald-600/50"></i>
-          <span>Built for community scale</span>
+        {/* 📦 Use Cases / Feature Grid */}
+        <div className="w-full space-y-3">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="h-px flex-1 bg-stone-800/50"></div>
+            <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Platform Capabilities</span>
+            <div className="h-px flex-1 bg-stone-800/50"></div>
+          </div>
+
+          {/* Feature 1 */}
+          <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800/50 p-5 rounded-3xl flex items-start gap-4">
+            <div className="w-12 h-12 rounded-[1rem] bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20">
+              <i className="ph-duotone ph-shield-check text-2xl"></i>
+            </div>
+            <div>
+              <h4 className="text-stone-200 font-bold text-xs mb-1.5 tracking-wide">Cryptographic Badging</h4>
+              <p className="text-[11px] text-stone-500 leading-relaxed">
+                Stateless HMAC-SHA256 signatures ensure printed meal passes cannot be counterfeited or duplicated by bad actors.
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 2 */}
+          <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800/50 p-5 rounded-3xl flex items-start gap-4">
+            <div className="w-12 h-12 rounded-[1rem] bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">
+              <i className="ph-duotone ph-lightning text-2xl"></i>
+            </div>
+            <div>
+              <h4 className="text-stone-200 font-bold text-xs mb-1.5 tracking-wide">Zero-Friction Scans</h4>
+              <p className="text-[11px] text-stone-500 leading-relaxed">
+                Sub-second camera processing built for fast-paced crowds. Verify attendees instantly without bottlenecking the line.
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 3 */}
+          <div className="bg-stone-900/40 backdrop-blur-md border border-stone-800/50 p-5 rounded-3xl flex items-start gap-4">
+            <div className="w-12 h-12 rounded-[1rem] bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/20">
+              <i className="ph-duotone ph-chart-polar text-2xl"></i>
+            </div>
+            <div>
+              <h4 className="text-stone-200 font-bold text-xs mb-1.5 tracking-wide">Live Audit Ledger</h4>
+              <p className="text-[11px] text-stone-500 leading-relaxed">
+                Generate instant end-of-day PDFs and track real-time fulfillment stats securely across multiple volunteer terminals.
+              </p>
+            </div>
+          </div>
         </div>
+
+        {/* Footer Note */}
+        <div className="mt-16 mb-8 flex items-center gap-2 text-stone-600/50 text-[10px] font-bold uppercase tracking-widest">
+          <i className="ph-fill ph-cpu text-sm"></i>
+          <span>Aahaaram OS • Core Engine</span>
+        </div>
+        
       </div>
     </div>
   );
