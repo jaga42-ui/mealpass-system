@@ -13,15 +13,27 @@ dotenv.config();
 
 const app = express();
 
-// --- PRODUCTION CORS SETUP ---
-// Allows local dev by default, but locks down to your Vercel URL in production
+// --- 🚀 BULLETPROOF CORS SETUP ---
+const allowedOrigins = [
+    'http://localhost:5173',
+    process.env.CLIENT_URL,
+    'https://mealpass-portal.vercel.app' // 🚀 YOUR LIVE FRONTEND SECURELY LOCKED IN
+];
+
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like internal server pings) or allowed origins
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('CORS Blocked: Unrecognized Origin'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true 
 }));
 
-// 🚀 THE FIX: Increased payload limit to 50mb to prevent 413 errors on large uploads
+// Increased payload limit to 50mb to prevent 413 errors on large uploads
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -42,10 +54,10 @@ const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/mealpass';
 
 mongoose.connect(MONGO_URI)
-    .then(async () => { // 🚀 Added 'async' here to handle the database index wipe
+    .then(async () => { 
         console.log('✅ Connected to MongoDB Atlas successfully.');
         
-        // 🚀 THE FIX: Destroy the old strict QR index so it allows 500+ null IDs
+        // Destroy the old strict QR index so it allows 500+ null IDs
         try {
             await mongoose.connection.collection('participants').dropIndex('qrId_1');
             console.log('🧹 Cleared old strict QR index! Database is unlocked.');

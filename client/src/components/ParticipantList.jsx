@@ -143,11 +143,11 @@ const ParticipantList = () => {
       });
       fetchParticipants();
     } catch (error) {
+      // 🚀 THE CONFESSION FIX: Forcing it to show raw connection errors
       setPairResult({
         type: "error",
-        title: "PAIRING REJECTED",
-        message:
-          error.response?.data?.message || "Invalid or counterfeit badge.",
+        title: "CONNECTION FAILED",
+        message: `Error: ${error.message}. Server said: ${error.response?.data?.message || "Nothing (Blocked)"}`,
       });
     }
   };
@@ -254,7 +254,6 @@ const ParticipantList = () => {
   const categories = ["All", "Participant", "Volunteer", "Guest"];
 
   return (
-    // 🚀 FIX: Wrapping everything in a Fragment so Modals are NOT inside the animated container
     <>
       <div className="flex flex-col h-full w-full max-w-md mx-auto pb-24 relative z-20 animate-enter">
         {/* 🌿 ORGANIC GLASS HEADER */}
@@ -431,8 +430,6 @@ const ParticipantList = () => {
           )}
         </div>
       </div>
-
-      {/* 🚀 FIX: Modals are now strictly attached to the viewport */}
 
       {/* 🛡️ PAIRING CAMERA MODAL */}
       {pairingUser && (
