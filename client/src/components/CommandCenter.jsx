@@ -5,6 +5,106 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import api from "../api/axios";
 
+// --- SUB-COMPONENT: INDIVIDUAL STAFF ROW ---
+// Extracts individual state so "Confirm Delete" only affects one row at a time
+const StaffRow = ({ u, handleRoleChange, setUsers, showMessage }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // 🛑 Master Admin Lock
+  const isMasterAdmin = u.email === "gurup2076@gmail.com";
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 3000); // Reset after 3 seconds
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await api.delete(`/admin/users/${u._id}`);
+      setUsers((prev) => prev.filter((user) => user._id !== u._id));
+      showMessage("User permanently deleted.", "success");
+    } catch (err) {
+      showMessage(err.response?.data?.message || "Failed to delete user.", "error");
+      setIsDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
+  return (
+    <div className="bg-black/40 border border-white/5 p-3 rounded-2xl flex items-center justify-between transition-all hover:bg-black/60">
+      <div className="truncate mr-2 flex items-center gap-2">
+        <p className="text-xs font-bold text-slate-300 truncate">
+          {u.email}
+        </p>
+        {isMasterAdmin && (
+          <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 text-[8px] uppercase tracking-widest border border-indigo-500/30">
+            Master
+          </span>
+        )}
+      </div>
+      
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="relative">
+          <select
+            value={u.role}
+            onChange={(e) => handleRoleChange(u._id, e.target.value)}
+            disabled={isMasterAdmin}
+            className={`text-[9px] font-black uppercase tracking-widest rounded-xl px-2 py-2 outline-none appearance-none pr-6 transition-all ${
+              isMasterAdmin ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+            } ${
+              u.role === "admin"
+                ? "bg-purple-500/10 border-purple-500/30 text-purple-400"
+                : u.role === "volunteer"
+                  ? "bg-teal-500/10 border-teal-500/30 text-teal-400"
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-400"
+            }`}
+          >
+            <option value="pending" className="bg-slate-900 text-amber-400">
+              Pending
+            </option>
+            <option value="volunteer" className="bg-slate-900 text-teal-400">
+              Volunteer
+            </option>
+            <option value="admin" className="bg-slate-900 text-purple-400">
+              Admin
+            </option>
+          </select>
+          <i className="ph-bold ph-caret-down absolute right-2 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none text-slate-400"></i>
+        </div>
+
+        {/* 🗑️ Smart Delete Button */}
+        {!isMasterAdmin && (
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all border ${
+              isDeleting
+                ? "bg-slate-800 text-slate-600 border-transparent cursor-not-allowed"
+                : confirmDelete
+                  ? "bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-[0_0_10px_rgba(225,29,72,0.2)]"
+                  : "bg-slate-900/50 text-slate-500 border-white/5 hover:border-rose-500/30 hover:text-rose-400 hover:bg-rose-500/10"
+            }`}
+            title="Delete User"
+          >
+            {isDeleting ? (
+              <i className="ph-bold ph-spinner animate-spin text-[12px]"></i>
+            ) : confirmDelete ? (
+              <i className="ph-bold ph-warning text-[12px]"></i>
+            ) : (
+              <i className="ph-bold ph-trash text-[12px]"></i>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+// --- MAIN COMPONENT ---
 const CommandCenter = () => {
   const [users, setUsers] = useState([]);
   const [settings, setSettings] = useState({
@@ -27,6 +127,11 @@ const CommandCenter = () => {
     fetchSettings();
     fetchUsers();
   }, []);
+
+  const showMessage = (text, type) => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  };
 
   const fetchSettings = async () => {
     try {
@@ -67,7 +172,7 @@ const CommandCenter = () => {
       );
       showMessage("Role updated.", "success");
     } catch (err) {
-      showMessage("Failed to update.", "error");
+      showMessage(err.response?.data?.message || "Failed to update.", "error");
     }
   };
 
@@ -431,11 +536,6 @@ const CommandCenter = () => {
     }
   };
 
-  const showMessage = (text, type) => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 3000);
-  };
-
   return (
     <div className="animate-enter w-full max-w-md mx-auto pb-24 px-4 relative z-20">
       {/* HEADER */}
@@ -587,7 +687,7 @@ const CommandCenter = () => {
           </div>
         </div>
 
-        {/* STAFF ACCESS BLOCK */}
+        {/* 🛡️ STAFF ACCESS BLOCK 🛡️ */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-[2rem]">
           <h3 className="font-black text-white text-base mb-4 flex items-center gap-2">
             <i className="ph-bold ph-shield-check text-purple-400"></i> Staff
@@ -595,51 +695,21 @@ const CommandCenter = () => {
           </h3>
 
           <div className="space-y-2 max-h-[40vh] overflow-y-auto no-scrollbar">
-            {users.map((u) => (
-              <div
-                key={u._id}
-                className="bg-black/40 border border-white/5 p-3 rounded-2xl flex items-center justify-between"
-              >
-                <div className="truncate mr-2">
-                  <p className="text-xs font-bold text-slate-300 truncate">
-                    {u.email}
-                  </p>
-                </div>
-                <div className="relative shrink-0">
-                  <select
-                    value={u.role}
-                    onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                    className={`text-[9px] font-black uppercase tracking-widest rounded-xl px-2 py-2 outline-none appearance-none pr-6 ${
-                      u.role === "admin"
-                        ? "bg-purple-500/10 border-purple-500/30 text-purple-400"
-                        : u.role === "volunteer"
-                          ? "bg-teal-500/10 border-teal-500/30 text-teal-400"
-                          : "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                    }`}
-                  >
-                    <option
-                      value="pending"
-                      className="bg-slate-900 text-amber-400"
-                    >
-                      Pending
-                    </option>
-                    <option
-                      value="volunteer"
-                      className="bg-slate-900 text-teal-400"
-                    >
-                      Volunteer
-                    </option>
-                    <option
-                      value="admin"
-                      className="bg-slate-900 text-purple-400"
-                    >
-                      Admin
-                    </option>
-                  </select>
-                  <i className="ph-bold ph-caret-down absolute right-2 top-1/2 -translate-y-1/2 text-[8px] pointer-events-none text-slate-400"></i>
-                </div>
+            {users.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 text-[10px] font-black uppercase tracking-widest border border-white/5 border-dashed rounded-2xl">
+                No records found.
               </div>
-            ))}
+            ) : (
+              users.map((u) => (
+                <StaffRow 
+                  key={u._id} 
+                  u={u} 
+                  handleRoleChange={handleRoleChange} 
+                  setUsers={setUsers}
+                  showMessage={showMessage}
+                />
+              ))
+            )}
           </div>
         </div>
 
