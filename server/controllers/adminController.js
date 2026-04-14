@@ -40,6 +40,7 @@ exports.updateSettings = async (req, res) => {
 };
 
 // --- ROSTER FETCHING (For Registration Desk) ---
+
 exports.getAllParticipants = async (req, res) => {
   try {
     // Sort alphabetically by name to make the volunteer's search easier
@@ -172,8 +173,10 @@ exports.deleteUser = async (req, res) => {
       });
     }
 
-    // 🛑 SELF-DELETION LOCK 🛑 
-    if (req.user && req.user._id.toString() === req.params.id) {
+    // 🛑 BULLETPROOF SELF-DELETION LOCK 🛑 
+    // Safely checks for both _id and id, preventing the .toString() crash
+    const requestingUserId = req.user?._id || req.user?.id;
+    if (requestingUserId && requestingUserId.toString() === req.params.id) {
       return res.status(400).json({
         message: "Action denied: You cannot delete your own admin account.",
       });
@@ -183,8 +186,13 @@ exports.deleteUser = async (req, res) => {
 
     res.status(200).json({ message: "Staff member permanently deleted." });
   } catch (error) {
-    console.error("Delete User Error:", error);
-    res.status(500).json({ message: "Error deleting staff member." });
+    // 🚨 CONFESSION LOG: Tells you EXACTLY what broke in the Render terminal
+    console.error("Delete User CRASH LOG:", error);
+    
+    // 🚨 Sends the real error message to your React frontend
+    res.status(500).json({ 
+      message: error.message || "Error deleting staff member." 
+    });
   }
 };
 
