@@ -160,8 +160,7 @@ exports.deleteUser = async (req, res) => {
       });
     }
 
-    // 🛑 SELF-DELETION LOCK 🛑 
-    // This prevents the currently logged-in admin from accidentally deleting themselves
+    // 🛑 SELF-DELETION LOCK 🛑
     if (req.user && req.user._id.toString() === req.params.id) {
       return res.status(400).json({
         message: "Action denied: You cannot delete your own admin account.",
@@ -182,7 +181,6 @@ exports.deleteUser = async (req, res) => {
 exports.generateBulkBadges = async (req, res) => {
   try {
     const count = parseInt(req.query.count) || 50;
-    // BULLETPROOFING: Trim the secret to kill invisible spaces from Render .env
     const secret = (
       process.env.QR_SECRET || "Aahaaram_secure_vault_2026"
     ).trim();
@@ -213,12 +211,10 @@ exports.generateBulkBadges = async (req, res) => {
 exports.pairBadge = async (req, res) => {
   try {
     let { participantId, qrString } = req.body;
-    // BULLETPROOFING: Trim the secret here too!
     const secret = (
       process.env.QR_SECRET || "Aahaaram_secure_vault_2026"
     ).trim();
 
-    // BULLETPROOFING: Strip any invisible spaces the phone camera added
     qrString = String(qrString).trim().toUpperCase();
 
     if (!qrString || !qrString.includes("-")) {
@@ -226,8 +222,6 @@ exports.pairBadge = async (req, res) => {
     }
 
     const [id, signature] = qrString.split("-");
-
-    // BULLETPROOFING: Trim the split pieces
     const cleanId = id.trim();
     const cleanSignature = signature.trim();
 
@@ -239,7 +233,6 @@ exports.pairBadge = async (req, res) => {
       .toUpperCase();
 
     if (cleanSignature !== expectedSignature) {
-      // THE CONFESSION: This tells you exactly what went wrong
       console.log(
         `❌ SCAN FAILED | ID: [${cleanId}] | Scanned: [${cleanSignature}] | Expected: [${expectedSignature}]`,
       );
@@ -280,7 +273,10 @@ exports.updateParticipant = async (req, res) => {
     const updatedUser = await Participant.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true },
+      {
+        new: true,
+        runValidators: true, // 👈 This forces MongoDB to strictly validate rules
+      },
     );
 
     if (!updatedUser) {
@@ -289,8 +285,13 @@ exports.updateParticipant = async (req, res) => {
 
     res.status(200).json(updatedUser);
   } catch (error) {
-    console.error("Update Participant Error:", error);
-    res.status(500).json({ message: "Error updating participant." });
+    // 🚨 Detailed crash logging
+    console.error("Update Participant CRASH LOG:", error);
+
+    // Send exact error message back to the frontend
+    res.status(500).json({
+      message: error.message || "Error updating participant.",
+    });
   }
 };
 
@@ -315,11 +316,9 @@ exports.purgeDatabase = async (req, res) => {
   try {
     await Participant.deleteMany({});
     await Scan.deleteMany({});
-    res
-      .status(200)
-      .json({
-        message: "SYSTEM PURGED: All data has been permanently deleted.",
-      });
+    res.status(200).json({
+      message: "SYSTEM PURGED: All data has been permanently deleted.",
+    });
   } catch (error) {
     console.error("Purge Error:", error);
     res.status(500).json({ message: "Critical error during system purge." });
