@@ -8,15 +8,16 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import ParticipantLogin from './pages/ParticipantLogin'; 
 import Portal from './pages/Portal'; 
-import ResetPassword from './pages/ResetPassword'; // 🚀 Added missing import
+import ResetPassword from './pages/ResetPassword';
 import Scanner from './components/Scanner';
 import ParticipantList from './components/ParticipantList';
 import CommandCenter from './components/CommandCenter';
 import Stats from './components/Stats';
+// 🚀 Import the new Pending screen
+import PendingScreen from './pages/PendingScreen'; // Adjust path if you saved it in components
 
 // 🛡️ Custom Router Guard
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
-    // 👇 Make sure 'loading' matches what AuthContext exports!
     const { user, loading } = useContext(AuthContext);
 
     if (loading) {
@@ -27,6 +28,11 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
         return <Navigate to="/login" replace />;
     }
 
+    // 🛑 THE NEW LOCK: If they are still pending, trap them in the waiting room!
+    if (user.role === 'pending') {
+        return <Navigate to="/pending" replace />;
+    }
+
     if (requireAdmin && user.role !== 'admin') {
         return <Navigate to="/scan" replace />; // Kick non-admins back to the scanner
     }
@@ -35,7 +41,6 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 };
 
 function App() {
-    // 👇 Make sure 'loading' matches what AuthContext exports!
     const { user, loading } = useContext(AuthContext);
 
     if (loading) return null;
@@ -43,10 +48,9 @@ function App() {
     return (
         <Router>
             <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-teal-500/30 overflow-x-hidden">
-                {/* Only show Navbar if logged in */}
-                {user && <Navbar />}
+                {/* Only show Navbar if logged in AND they are not pending */}
+                {user && user.role !== 'pending' && <Navbar />}
                 
-                {/* 👇 Added pt-20 and pb-28 here to prevent content from hiding under Navbars */}
                 <main className="p-4 md:p-8 pt-20 pb-28 max-w-7xl mx-auto w-full relative z-10">
                     <Routes>
                         {/* 🌍 PUBLIC ROUTES */}
@@ -55,6 +59,14 @@ function App() {
                         <Route path="/pass" element={<ParticipantLogin />} />
                         <Route path="/portal" element={<Portal />} /> 
                         <Route path="/resetpassword/:token" element={<ResetPassword />} />
+
+                        {/* ⏳ THE WAITING ROOM */}
+                        <Route 
+                            path="/pending" 
+                            element={
+                                !user ? <Navigate to="/login" replace /> : <PendingScreen />
+                            } 
+                        />
 
                         {/* 🛡️ UNIVERSAL PROTECTED ROUTE (Both Volunteers & Admins) */}
                         <Route 

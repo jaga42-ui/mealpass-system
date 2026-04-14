@@ -13,16 +13,8 @@ export const AuthProvider = ({ children }) => {
             const token = localStorage.getItem('mealpass_token');
             
             if (storedUserStr && token) {
-                const storedUser = JSON.parse(storedUserStr);
-                
-                // 🛑 GATEKEEPER 1: Boot them on initial load if still pending
-                if (storedUser.role === 'pending') {
-                    localStorage.removeItem('mealpass_token');
-                    localStorage.removeItem('mealpass_user');
-                    setUser(null);
-                } else {
-                    setUser(storedUser);
-                }
+                // We no longer kick them out here. We let the Router handle them.
+                setUser(JSON.parse(storedUserStr));
             }
             setLoading(false);
         };
@@ -33,12 +25,7 @@ export const AuthProvider = ({ children }) => {
         const response = await api.post('/auth/login', { email, password });
         const userData = response.data.user;
 
-        // 🛑 GATEKEEPER 2: Block login execution BEFORE saving the session
-        if (userData.role === 'pending') {
-            throw new Error('Your account is still pending Admin approval.');
-        }
-
-        // Only save and set if they are approved
+        // We no longer throw an error. We let them log in, but Login.jsx will route them to the lobby.
         localStorage.setItem('mealpass_token', response.data.token);
         localStorage.setItem('mealpass_user', JSON.stringify(userData));
         setUser(userData);
@@ -57,7 +44,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+        // 👇 Notice we added 'setUser' to the exports so PendingScreen can use it!
+        <AuthContext.Provider value={{ user, setUser, loading, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );

@@ -33,17 +33,16 @@ const Login = () => {
             const res = await api.post('/auth/google', { access_token: tokenResponse.access_token });
             const user = res.data.user;
 
-            // 🛑 GATEKEEPER 3: Intercept Google accounts
-            if (user.role === 'pending') {
-                setError('Account registered via Google. Please wait for Admin approval.');
-                setLoading(false);
-                return; // Stop execution!
-            }
-            
+            // Save the session
             localStorage.setItem('mealpass_token', res.data.token);
             localStorage.setItem('mealpass_user', JSON.stringify(user)); 
             
-            window.location.href = '/scan'; 
+            // Route them based on Admin verification status
+            if (user.role === 'pending') {
+                window.location.href = '/pending'; 
+            } else {
+                window.location.href = '/scan'; 
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Google authentication failed.');
             setLoading(false);
@@ -60,17 +59,32 @@ const Login = () => {
 
     try {
       if (isSignup) {
+        // Register the new user
         await register(email, password);
         setIsSignup(false);
         setError('');
-        alert("Account created successfully! Please wait for admin approval before logging in.");
+        
+        // Log them in immediately after creating the account
+        const loginRes = await login(email, password);
+        
+        // Route them to the waiting room
+        if (loginRes.user.role === 'pending') {
+            navigate('/pending');
+        } else {
+            navigate('/scan');
+        }
       } else {
-        // Because of our Context fix, if they are pending, this await will throw an error automatically!
-        await login(email, password);
-        navigate('/scan'); 
+        // Standard Log In
+        const loginRes = await login(email, password);
+        
+        // Route them based on verification status
+        if (loginRes.user.role === 'pending') {
+            navigate('/pending');
+        } else {
+            navigate('/scan'); 
+        }
       }
     } catch (err) {
-      // The pending error thrown from AuthContext gets caught right here
       setError(err.response?.data?.message || err.message || 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
@@ -97,29 +111,30 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-teal-950 via-teal-900 to-slate-900 flex items-center justify-center p-6 py-12 font-sans relative overflow-x-hidden overflow-y-auto">
+    <div className="min-h-screen w-full bg-stone-950 flex flex-col items-center justify-center p-6 py-12 font-sans relative overflow-x-hidden overflow-y-auto">
       
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-teal-500/20 rounded-full blur-[100px]"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-slate-900/80 rounded-full blur-[100px]"></div>
+      {/* 🌅 Ambient Lighting */}
+      <div className="absolute top-[-5%] right-[-10%] w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[10%] left-[-10%] w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="w-full max-w-sm animate-enter relative z-10">
         
         <div className="text-center mb-10">
-          <div className="w-20 h-20 mx-auto bg-teal-500/10 border border-teal-500/30 backdrop-blur-xl rounded-[1.5rem] flex items-center justify-center shadow-[0_0_30px_rgba(20,184,166,0.2)] mb-6 animate-float">
-            <i className="ph-duotone ph-bowl-food text-4xl text-teal-400"></i>
+          <div className="w-20 h-20 mx-auto bg-stone-900 border border-stone-800 rounded-[1.5rem] flex items-center justify-center shadow-2xl mb-6">
+            <i className="ph-duotone ph-bowl-food text-4xl text-emerald-500"></i>
           </div>
-          <h1 className="text-4xl font-black text-white tracking-wide">
+          <h1 className="text-4xl font-black text-stone-100 tracking-tight mb-2">
             Aahaaram
           </h1>
-          <p className="text-teal-200/60 font-medium mt-2 text-sm uppercase tracking-[0.2em]">
+          <p className="text-stone-400 font-medium mt-2 text-[10px] uppercase tracking-[0.2em]">
             {isSignup ? 'Create Account' : 'Welcome Back'}
           </p>
         </div>
 
-        <form onSubmit={handleAuth} className="bg-white/5 backdrop-blur-2xl border border-white/10 p-8 rounded-[2.5rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7)] space-y-5">
+        <form onSubmit={handleAuth} className="bg-stone-900/40 backdrop-blur-md border border-stone-800 p-8 rounded-[2.5rem] shadow-2xl space-y-5">
           
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold px-4 py-3 rounded-xl text-center backdrop-blur-sm animate-enter">
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] font-bold px-4 py-3 rounded-xl text-center backdrop-blur-sm animate-enter">
               {error}
             </div>
           )}
@@ -129,7 +144,7 @@ const Login = () => {
             type="button" 
             onClick={() => handleGoogleAuth()}
             disabled={loading}
-            className="w-full py-4 bg-white text-slate-900 font-black rounded-2xl shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-300 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full py-4 bg-white text-stone-900 font-bold text-sm rounded-2xl shadow-lg transition-all duration-300 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98]"
           >
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
             <span>Continue with Google</span>
@@ -137,20 +152,20 @@ const Login = () => {
 
           {/* Divider */}
           <div className="flex items-center gap-3 py-1">
-            <div className="h-px w-full bg-white/10"></div>
-            <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Or</span>
-            <div className="h-px w-full bg-white/10"></div>
+            <div className="h-px flex-1 bg-stone-800/50"></div>
+            <span className="text-[9px] font-bold uppercase text-stone-600 tracking-widest">Or</span>
+            <div className="h-px flex-1 bg-stone-800/50"></div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest ml-3">
+            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest ml-3">
               Email
             </label>
             <input 
               type="email" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-5 font-bold text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner" 
+              className="w-full bg-stone-950/50 border border-stone-800 rounded-2xl py-4 px-5 font-bold text-stone-200 placeholder-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-inner text-sm" 
               placeholder="user@example.com"
               required={!isSignup}
             />
@@ -158,7 +173,7 @@ const Login = () => {
           
           <div className="space-y-1">
             <div className="flex justify-between items-center ml-3 mr-1">
-              <label className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest">
+              <label className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">
                 Password
               </label>
               
@@ -166,7 +181,7 @@ const Login = () => {
                 <button 
                   type="button" 
                   onClick={() => { setShowForgotModal(true); setForgotMsg(null); }}
-                  className="text-[9px] font-black text-slate-400 hover:text-teal-300 uppercase tracking-widest transition-colors"
+                  className="text-[9px] font-bold text-stone-500 hover:text-emerald-400 uppercase tracking-widest transition-colors"
                 >
                   Forgot Password?
                 </button>
@@ -177,7 +192,7 @@ const Login = () => {
               type="password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-5 font-bold text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner mt-1" 
+              className="w-full bg-stone-950/50 border border-stone-800 rounded-2xl py-4 px-5 font-bold text-stone-200 placeholder-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-inner mt-1 text-sm" 
               placeholder="••••••••"
               required={!isSignup}
               minLength={6}
@@ -187,10 +202,10 @@ const Login = () => {
           <button 
             type="submit" 
             disabled={loading}
-            className={`w-full py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 font-black tracking-wide mt-2 ${loading ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)] active:scale-95 translate-y-[-2px] active:translate-y-[0px]'}`}
+            className={`w-full py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 font-bold text-sm mt-2 ${loading ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-emerald-600 text-white shadow-[0_10px_30px_rgba(5,150,105,0.2)] hover:bg-emerald-500 active:scale-95'}`}
           >
             <span>
-              {loading ? 'Loading...' : (isSignup ? 'Sign Up' : 'Log In')}
+              {loading ? 'Processing...' : (isSignup ? 'Sign Up' : 'Log In')}
             </span> 
             {!loading && <i className="ph-bold ph-arrow-right text-lg"></i>}
           </button>
@@ -202,7 +217,7 @@ const Login = () => {
                 setIsSignup(!isSignup);
                 setError('');
               }} 
-              className="text-[11px] font-black text-slate-400 hover:text-teal-300 uppercase tracking-widest transition-colors"
+              className="text-[10px] font-bold text-stone-500 hover:text-stone-300 uppercase tracking-widest transition-colors"
             >
               {isSignup ? 'Back to Login' : 'Create Account'}
             </button>
@@ -212,23 +227,23 @@ const Login = () => {
 
       {/* 🛡️ PASSWORD RECOVERY MODAL 🛡️ */}
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md animate-enter">
-          <div className="bg-slate-900 border border-white/10 w-full max-w-sm rounded-[2.5rem] p-8 shadow-[0_30px_60px_rgba(0,0,0,0.9)] relative overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-stone-950/90 backdrop-blur-sm animate-enter">
+          <div className="bg-stone-900 border border-stone-800 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
             
-            <div className="absolute top-0 w-full h-32 bg-gradient-to-b from-teal-500/20 to-transparent left-0 pointer-events-none"></div>
+            <div className="absolute top-0 w-full h-32 bg-gradient-to-b from-emerald-500/10 to-transparent left-0 pointer-events-none"></div>
 
             <div className="text-center mb-6 relative z-10">
-              <div className="w-16 h-16 mx-auto bg-teal-500/10 border border-teal-500/30 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(20,184,166,0.2)] mb-4">
-                <i className="ph-duotone ph-envelope-simple-open text-3xl text-teal-400"></i>
+              <div className="w-16 h-16 mx-auto bg-stone-950 border border-stone-800 rounded-2xl flex items-center justify-center shadow-inner mb-4">
+                <i className="ph-duotone ph-envelope-simple-open text-3xl text-emerald-500"></i>
               </div>
-              <h2 className="text-2xl font-black text-white tracking-wide">Reset Password</h2>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2">
+              <h2 className="text-2xl font-black text-stone-100 tracking-tight">Reset Password</h2>
+              <p className="text-stone-500 text-[10px] font-bold uppercase tracking-widest mt-2">
                 Enter your email to receive a reset link
               </p>
             </div>
 
             {forgotMsg && (
-              <div className={`mb-6 p-3 rounded-xl text-[10px] font-bold text-center border backdrop-blur-sm animate-enter ${forgotMsg.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}>
+              <div className={`mb-6 p-3 rounded-xl text-[11px] font-bold text-center border backdrop-blur-sm animate-enter ${forgotMsg.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
                 {forgotMsg.text}
               </div>
             )}
@@ -238,7 +253,7 @@ const Login = () => {
                 type="email" 
                 value={forgotEmail}
                 onChange={(e) => setForgotEmail(e.target.value)}
-                className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 px-5 font-bold text-white placeholder-slate-600 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner text-sm" 
+                className="w-full bg-stone-950/50 border border-stone-800 rounded-2xl py-4 px-5 font-bold text-stone-200 placeholder-stone-600 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all shadow-inner text-sm" 
                 placeholder="Email address"
                 required
               />
@@ -246,7 +261,7 @@ const Login = () => {
               <button 
                 type="submit" 
                 disabled={forgotLoading}
-                className={`w-full py-4 rounded-2xl transition-all duration-300 font-black tracking-widest uppercase text-[10px] flex items-center justify-center gap-2 ${forgotLoading ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)] active:scale-95'}`}
+                className={`w-full py-4 rounded-2xl transition-all duration-300 font-bold text-sm flex items-center justify-center gap-2 ${forgotLoading ? 'bg-stone-800 text-stone-500 cursor-not-allowed' : 'bg-emerald-600 text-white shadow-[0_10px_30px_rgba(5,150,105,0.2)] hover:bg-emerald-500 active:scale-95'}`}
               >
                 {forgotLoading ? 'Sending...' : 'Send Link'}
               </button>
@@ -254,7 +269,7 @@ const Login = () => {
 
             <button 
               onClick={() => { setShowForgotModal(false); setForgotMsg(null); }}
-              className="w-full mt-4 py-3 text-slate-500 hover:text-white font-black uppercase tracking-widest text-[10px] transition-colors relative z-10"
+              className="w-full mt-4 py-3 text-stone-500 hover:text-stone-300 font-bold uppercase tracking-widest text-[10px] transition-colors relative z-10"
             >
               Cancel
             </button>

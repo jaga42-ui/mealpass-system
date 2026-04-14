@@ -127,7 +127,8 @@ exports.updateUserRole = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "User not found." });
 
-    if (user.email === "Guruprasadjena989@gmail.com") {
+    // 🛑 MASTER ADMIN PROTECTION 🛑
+    if (user.email === "gurup2076@gmail.com") {
       return res.status(403).json({
         message:
           "SECURITY ALERT: Master Admin credentials cannot be modified or demoted.",
@@ -140,6 +141,39 @@ exports.updateUserRole = async (req, res) => {
     res.status(200).json({ message: "Role updated successfully.", user });
   } catch (error) {
     res.status(500).json({ message: "Error updating role." });
+  }
+};
+
+// 🗑️ DELETE STAFF MEMBER 🗑️
+exports.deleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // 🛑 MASTER ADMIN PROTECTION 🛑
+    if (user.email === "gurup2076@gmail.com") {
+      return res.status(403).json({
+        message: "SECURITY ALERT: The Master Admin account cannot be deleted.",
+      });
+    }
+
+    // 🛑 SELF-DELETION LOCK 🛑 
+    // This prevents the currently logged-in admin from accidentally deleting themselves
+    if (req.user && req.user._id.toString() === req.params.id) {
+      return res.status(400).json({
+        message: "Action denied: You cannot delete your own admin account.",
+      });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({ message: "Staff member permanently deleted." });
+  } catch (error) {
+    console.error("Delete User Error:", error);
+    res.status(500).json({ message: "Error deleting staff member." });
   }
 };
 
@@ -275,7 +309,7 @@ exports.deleteParticipant = async (req, res) => {
   }
 };
 
-// --- 🚨 SYSTEM PURGE (NEW) ---
+// --- 🚨 SYSTEM PURGE ---
 
 exports.purgeDatabase = async (req, res) => {
   try {

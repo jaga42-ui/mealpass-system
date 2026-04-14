@@ -3,12 +3,12 @@ const router = express.Router();
 const { 
     getSettings, updateSettings, 
     bulkUploadParticipants, 
-    getAllUsers, updateUserRole,
+    getAllUsers, updateUserRole, deleteUser, // <-- Imported deleteUser here
     generateBulkBadges, 
     pairBadge,
     updateParticipant,   
     deleteParticipant,
-    purgeDatabase // <-- Imported the Purge
+    purgeDatabase 
 } = require('../controllers/adminController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
@@ -28,6 +28,7 @@ router.route('/users')
     .get(getAllUsers);
     
 router.put('/users/:id/role', updateUserRole);
+router.delete('/users/:id', deleteUser); // <-- Added the new delete route here
 
 // Secure Hardware Token Engine
 router.get('/generate-badges', generateBulkBadges);
