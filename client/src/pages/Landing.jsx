@@ -40,7 +40,8 @@ const Landing = () => {
           </button>
 
           <button
-            onClick={() => navigate("/signup")}
+            // 👇 THE FIX: Navigate to /login but pass the isSignup state automatically 👇
+            onClick={() => navigate("/login", { state: { isSignup: true } })}
             className="w-full py-4 bg-stone-900 text-stone-300 font-bold text-sm rounded-2xl border border-stone-800 hover:bg-stone-800 hover:text-white active:scale-95 transition-all duration-300 flex items-center justify-center gap-2"
           >
             <i className="ph-bold ph-user-plus text-lg"></i>
