@@ -9,10 +9,12 @@ const Scanner = () => {
     const [loadingConfig, setLoadingConfig] = useState(true);
     const scannerRef = useRef(null);
 
+    // --- 🔄 1. THE RADAR: SHORT POLLING ---
     useEffect(() => {
         const fetchConfig = async () => {
             try {
-                const res = await api.get('/scans/config');
+                // ?t=... busts the browser cache so it always asks the server for the latest status
+                const res = await api.get(`/scans/config?t=${new Date().getTime()}`);
                 setConfig(res.data);
             } catch (err) {
                 console.error("Failed to fetch scanner config", err);
@@ -20,8 +22,24 @@ const Scanner = () => {
                 setLoadingConfig(false);
             }
         };
+
+        // Initial check on load
         fetchConfig();
+
+        // Ping the server every 5 seconds
+        const intervalId = setInterval(fetchConfig, 5000);
+
+        // Cleanup when leaving the page
+        return () => clearInterval(intervalId);
     }, []);
+
+    // --- 🛑 2. THE KILL SWITCH ---
+    // If the admin locks the terminal while the camera is actively on, shut it down immediately!
+    useEffect(() => {
+        if (config.isScannerLocked && isScanning) {
+            stopScanner();
+        }
+    }, [config.isScannerLocked, isScanning]);
 
     const startScanner = async () => {
         if (config.isScannerLocked) return; 
@@ -33,7 +51,7 @@ const Scanner = () => {
             scannerRef.current = new Html5Qrcode("reader");
             await scannerRef.current.start(
                 { facingMode: "environment" },
-                { fps: 15 }, // Edge-to-edge scanning
+                { fps: 15 }, 
                 onScanSuccess,
                 onScanFailure
             );
@@ -89,7 +107,9 @@ const Scanner = () => {
 
     const closeResult = () => {
         setScanResult(null);
-        if (scannerRef.current && isScanning) scannerRef.current.resume();
+        if (scannerRef.current && isScanning && !config.isScannerLocked) {
+            scannerRef.current.resume();
+        }
     };
 
     if (loadingConfig) {
@@ -100,14 +120,38 @@ const Scanner = () => {
         );
     }
 
+    // --- 🚨 3. THE EPIC LOCKDOWN SCREEN ---
     if (config.isScannerLocked) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] bg-slate-900/50 backdrop-blur-xl p-8 rounded-[2rem] border border-white/5 text-center w-full max-w-md mx-auto shadow-2xl">
-                <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6 shadow-inner border border-white/5">
-                    <i className="ph-light ph-lock-key text-3xl text-slate-400"></i>
+            <div className="min-h-[80vh] w-full max-w-md mx-auto flex flex-col items-center justify-center bg-stone-950 rounded-[2.5rem] border border-rose-500/20 p-8 text-center animate-enter relative overflow-hidden mt-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                
+                {/* Danger Ambient Lighting */}
+                <div className="absolute top-[-20%] left-[-10%] w-96 h-96 bg-rose-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+                <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-orange-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+
+                <div className="w-24 h-24 bg-rose-500/10 border border-rose-500/30 rounded-[2rem] flex items-center justify-center shadow-[0_0_40px_rgba(244,63,94,0.3)] mb-8 relative z-10">
+                    <i className="ph-fill ph-lock-key text-5xl text-rose-500 animate-pulse"></i>
                 </div>
-                <h3 className="text-xl font-light text-white mb-2 tracking-wide">Terminal Locked</h3>
-                <p className="text-sm text-slate-500 font-light">Scanning is currently paused by the administrator.</p>
+
+                <h2 className="text-3xl font-black text-white tracking-tight mb-4 relative z-10">
+                    Terminal Locked
+                </h2>
+                
+                <p className="text-rose-400/80 text-[10px] font-bold uppercase tracking-[0.2em] max-w-[250px] relative z-10 leading-relaxed mx-auto">
+                    Scanning operations are suspended by Command Center. Wait for authorization.
+                </p>
+
+                {/* Radar Ping Indicator */}
+                <div className="mt-12 flex items-center gap-3 bg-black/40 border border-white/5 px-4 py-3 rounded-2xl relative z-10 shadow-inner">
+                    <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest">
+                        Awaiting Signal...
+                    </span>
+                </div>
+
             </div>
         );
     }
@@ -184,7 +228,7 @@ const Scanner = () => {
                 )}
             </div>
 
-            {/* Refined Stop Button (Moved OUTSIDE the camera box so it doesn't block the view) */}
+            {/* Refined Stop Button */}
             {isScanning && (
                 <div className="flex justify-center mt-6">
                     <button 
@@ -227,7 +271,7 @@ const Scanner = () => {
                                 <p className="text-xs text-slate-400 font-light mt-1">{scanResult.participant.category}</p>
                             )}
 
-                            {/* 🚀 NEW: DYNAMIC METADATA GRID 🚀 */}
+                            {/* DYNAMIC METADATA GRID */}
                             {scanResult.participant?.metadata && Object.keys(scanResult.participant.metadata).length > 0 && (
                                 <div className="mt-5 border-t border-white/10 pt-5">
                                     <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-teal-500/70 mb-3 text-left">Additional Details</h4>
