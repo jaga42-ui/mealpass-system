@@ -5,7 +5,6 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    // 👇 FIX: Renamed from isLoading to loading to match App.jsx
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -16,8 +15,8 @@ export const AuthProvider = ({ children }) => {
             if (storedUserStr && token) {
                 const storedUser = JSON.parse(storedUserStr);
                 
-                // 🛑 Gatekeeper on Load: Boot them if they are still pending
-                if (storedUser.status === 'pending') {
+                // 🛑 GATEKEEPER 1: Boot them on initial load if still pending
+                if (storedUser.role === 'pending') {
                     localStorage.removeItem('mealpass_token');
                     localStorage.removeItem('mealpass_user');
                     setUser(null);
@@ -34,13 +33,12 @@ export const AuthProvider = ({ children }) => {
         const response = await api.post('/auth/login', { email, password });
         const userData = response.data.user;
 
-        // 🛑 Gatekeeper on Login: Throw an error BEFORE saving the session
-        if (userData.status === 'pending') {
-            // Throwing an error here triggers the 'catch' block in your Login.jsx
+        // 🛑 GATEKEEPER 2: Block login execution BEFORE saving the session
+        if (userData.role === 'pending') {
             throw new Error('Your account is still pending Admin approval.');
         }
 
-        // If they pass the check, save the session and log them in
+        // Only save and set if they are approved
         localStorage.setItem('mealpass_token', response.data.token);
         localStorage.setItem('mealpass_user', JSON.stringify(userData));
         setUser(userData);
@@ -59,7 +57,6 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        // 👇 FIX: Exporting 'loading' instead of 'isLoading'
         <AuthContext.Provider value={{ user, loading, login, register, logout }}>
             {children}
         </AuthContext.Provider>

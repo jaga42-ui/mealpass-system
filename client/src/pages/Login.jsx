@@ -33,11 +33,11 @@ const Login = () => {
             const res = await api.post('/auth/google', { access_token: tokenResponse.access_token });
             const user = res.data.user;
 
-            // 🛑 THE FIX: Intercept pending Google users before saving tokens
-            if (user.status === 'pending') {
+            // 🛑 GATEKEEPER 3: Intercept Google accounts
+            if (user.role === 'pending') {
                 setError('Account registered via Google. Please wait for Admin approval.');
                 setLoading(false);
-                return; // Stop the execution here! Do not route to /scan.
+                return; // Stop execution!
             }
             
             localStorage.setItem('mealpass_token', res.data.token);
@@ -65,20 +65,13 @@ const Login = () => {
         setError('');
         alert("Account created successfully! Please wait for admin approval before logging in.");
       } else {
+        // Because of our Context fix, if they are pending, this await will throw an error automatically!
         await login(email, password);
-        
-        // 🛑 THE FIX: Read the user data that AuthContext just saved to local storage
-        const storedUser = JSON.parse(localStorage.getItem('mealpass_user'));
-
-        if (storedUser && storedUser.status === 'pending') {
-            setError('Your account is still pending Admin approval.');
-            // Note: If you have a logout function in AuthContext, you should call it here to clear the token.
-        } else {
-            navigate('/scan'); 
-        }
+        navigate('/scan'); 
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed. Please try again.');
+      // The pending error thrown from AuthContext gets caught right here
+      setError(err.response?.data?.message || err.message || 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
