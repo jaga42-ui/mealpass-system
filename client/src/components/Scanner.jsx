@@ -12,12 +12,12 @@ const Scanner = () => {
     const scannerRef = useRef(null);
 
     // --- PAIRING MODE STATE ---
-    const [pendingBadge, setPendingBadge] = useState(null); // Holds the raw QR text while assigning
     const [participants, setParticipants] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedParticipant, setSelectedParticipant] = useState(null); // Holds the selected user BEFORE scanning
     const [isPairing, setIsPairing] = useState(false);
 
-    // Fetch config (Polling)
+    // 🔄 Polling Config
     useEffect(() => {
         const fetchConfig = async () => {
             try {
@@ -34,7 +34,7 @@ const Scanner = () => {
         return () => clearInterval(intervalId);
     }, []);
 
-    // Fetch Participants ONLY when they switch to Pairing Mode
+    // Fetch Participants when switching to Pairing Mode
     useEffect(() => {
         if (mode === 'pairing' && participants.length === 0) {
             api.get('/admin/participants')
@@ -53,7 +53,6 @@ const Scanner = () => {
         
         setIsScanning(true);
         setScanResult(null);
-        setPendingBadge(null);
         
         try {
             scannerRef.current = new Html5Qrcode("reader");
@@ -81,14 +80,14 @@ const Scanner = () => {
     const onScanSuccess = async (decodedText) => {
         if (scannerRef.current) scannerRef.current.pause();
 
-        // 🟢 BRANCH 1: REGISTRATION MODE (Linking Blank Badges)
+        // 🟢 BRANCH 1: REGISTRATION MODE (Badge scanned AFTER participant is selected)
         if (mode === 'pairing') {
             if (!decodedText.includes('-')) {
                 setScanResult({ type: 'error', title: 'Invalid Badge', message: 'This is not a valid blank Aahaaram badge. Cannot link.' });
                 return;
             }
-            // Save the scanned text and trigger the participant selection modal
-            setPendingBadge(decodedText);
+            // Trigger the pairing API immediately
+            await handlePairBadge(selectedParticipant._id, decodedText);
             return;
         }
 
@@ -131,15 +130,17 @@ const Scanner = () => {
         }
     };
 
-    const handlePairBadge = async (participantId) => {
+    const handlePairBadge = async (participantId, qrString) => {
         setIsPairing(true);
         try {
-            const res = await api.post('/admin/pair-badge', { participantId, qrString: pendingBadge });
+            const res = await api.post('/admin/pair-badge', { participantId, qrString });
             
-            // Remove the newly assigned participant from our local list so they don't show up again
+            // Remove the newly assigned participant from our local list
             setParticipants(prev => prev.filter(p => p._id !== participantId));
             
-            setPendingBadge(null);
+            // Reset the selection so they can search for the next person
+            setSelectedParticipant(null);
+            
             setScanResult({
                 type: 'success',
                 title: 'Badge Linked!',
@@ -147,7 +148,6 @@ const Scanner = () => {
                 participant: res.data.participant
             });
         } catch (err) {
-            setPendingBadge(null);
             setScanResult({
                 type: 'error',
                 title: 'Pairing Failed',
@@ -158,7 +158,7 @@ const Scanner = () => {
         }
     };
 
-    // Filter participants to only show people who DO NOT have a badge yet, and match the search query
+    // Filter unassigned participants
     const unassignedParticipants = participants.filter(p => 
         !p.qrId && p.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -195,7 +195,7 @@ const Scanner = () => {
     return (
         <div className="w-full max-w-md mx-auto relative z-20 pb-10 space-y-6">
             
-            {/* DYNAMIC LASER CSS (Changes color based on mode) */}
+            {/* DYNAMIC LASER CSS */}
             <style>{`
                 @keyframes laserSweep {
                     0% { top: 10%; opacity: 0.2; }
@@ -213,7 +213,7 @@ const Scanner = () => {
             {/* 🎛️ MODE SWITCHER */}
             <div className="flex bg-slate-900/60 backdrop-blur-xl border border-white/10 p-1.5 rounded-2xl mb-4 shadow-lg">
                 <button
-                    onClick={() => { setMode('meal'); if(isScanning) stopScanner(); }}
+                    onClick={() => { setMode('meal'); setSelectedParticipant(null); if(isScanning) stopScanner(); }}
                     className={`flex-1 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${mode === 'meal' ? 'bg-teal-500 text-slate-900 shadow-md scale-[1.02]' : 'text-slate-500 hover:text-white'}`}
                 >
                     Meal Queue
@@ -243,109 +243,118 @@ const Scanner = () => {
                 </div>
             </div>
 
-            {/* 📸 COMPACT SQUARE CAMERA VIEWPORT */}
-            <div className="relative w-[85%] max-w-[320px] mx-auto aspect-square bg-slate-950 rounded-[2rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 ring-1 ring-white/5 mt-8">
-                
-                <div id="reader" className="w-full h-full object-cover"></div>
+            {/* 🔗 THE ROSTER SEARCH UI (Only shows when Pairing mode is active AND no one is selected) */}
+            {mode === 'pairing' && !selectedParticipant && (
+                <div className="w-full bg-slate-900/60 backdrop-blur-xl border border-indigo-500/30 rounded-[2.5rem] p-6 shadow-2xl flex flex-col h-[60vh] animate-enter">
+                    <h2 className="text-xl font-black text-white mb-1 shrink-0">Find Participant</h2>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-5 shrink-0">
+                        Select a person to assign a badge
+                    </p>
 
-                {isScanning && (
-                    <>
-                        <div className="absolute left-6 right-6 scanner-laser z-20 pointer-events-none"></div>
-                        <div className="absolute top-6 left-6 w-10 h-10 border-t-2 border-l-2 border-white/30 rounded-tl-2xl z-10 pointer-events-none"></div>
-                        <div className="absolute top-6 right-6 w-10 h-10 border-t-2 border-r-2 border-white/30 rounded-tr-2xl z-10 pointer-events-none"></div>
-                        <div className="absolute bottom-6 left-6 w-10 h-10 border-b-2 border-l-2 border-white/30 rounded-bl-2xl z-10 pointer-events-none"></div>
-                        <div className="absolute bottom-6 right-6 w-10 h-10 border-b-2 border-r-2 border-white/30 rounded-br-2xl z-10 pointer-events-none"></div>
-                    </>
-                )}
-                
-                {!isScanning && (
-                    <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-900/80 backdrop-blur-md">
-                        <button onClick={startScanner} className="group flex flex-col items-center outline-none">
-                            <div className={`w-20 h-20 bg-white/5 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/10 transition-all duration-500 group-hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(0,0,0,0.3)] ${mode === 'pairing' ? 'group-hover:bg-indigo-500/20' : 'group-hover:bg-teal-500/20'}`}>
-                                <i className={`ph-light ph-camera text-3xl transition-colors ${mode === 'pairing' ? 'text-indigo-400' : 'text-teal-400'}`}></i>
-                            </div>
-                            <span className="mt-5 text-[10px] font-semibold tracking-[0.25em] text-slate-300 uppercase">
-                                Activate Lens
-                            </span>
-                        </button>
+                    <div className="bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 mb-4 shrink-0 flex items-center gap-3 shadow-inner">
+                        <i className="ph-bold ph-magnifying-glass text-slate-500"></i>
+                        <input
+                            type="text"
+                            placeholder="Search name..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-transparent text-sm font-bold text-white placeholder-slate-600 focus:outline-none"
+                        />
                     </div>
-                )}
-            </div>
 
-            {isScanning && (
-                <div className="flex justify-center mt-6">
-                    <button onClick={stopScanner} className="bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white/90 px-8 py-4 rounded-full text-[10px] font-semibold tracking-widest uppercase flex items-center gap-3 hover:bg-rose-500/90 hover:border-rose-500 active:scale-95 transition-all shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-                        <div className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-pulse"></div>
-                        Close Lens
-                    </button>
+                    <div className="overflow-y-auto flex-1 space-y-2 pr-2 custom-scrollbar">
+                        {unassignedParticipants.length === 0 ? (
+                            <div className="text-center py-10 border border-dashed border-white/10 rounded-2xl">
+                                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">No matches found</p>
+                                <p className="text-slate-600 text-xs">All matching participants have badges.</p>
+                            </div>
+                        ) : (
+                            unassignedParticipants.map(p => (
+                                <div key={p._id} className="flex items-center justify-between bg-black/40 p-3 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors">
+                                    <div className="truncate mr-4">
+                                        <p className="text-sm font-bold text-white truncate">{p.name}</p>
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest truncate">{p.category || 'Participant'}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedParticipant(p)}
+                                        className="shrink-0 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500 hover:text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                                    >
+                                        Select
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             )}
 
-            {/* 🔗 THE PENDING BADGE MODAL (Registration Mode) */}
-            {pendingBadge && (
-                <div className="fixed inset-0 z-[150] flex flex-col justify-end bg-slate-950/80 backdrop-blur-md pb-6 px-4 animate-enter">
-                     <div className="w-full max-w-md mx-auto bg-slate-900 border border-indigo-500/30 rounded-[2.5rem] p-6 shadow-2xl flex flex-col h-[85vh]">
-                         
-                         <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl border border-indigo-500/30 flex items-center justify-center mx-auto mb-4 shrink-0">
-                             <i className="ph-fill ph-link text-3xl text-indigo-400"></i>
-                         </div>
-                         
-                         <h2 className="text-2xl font-black text-white text-center mb-1 shrink-0">Assign Badge</h2>
-                         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-400/80 text-center mb-6 shrink-0">
-                            Badge ID: {pendingBadge.split('-')[0]}
-                         </p>
 
-                         <div className="bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 mb-4 shrink-0 flex items-center gap-3 shadow-inner">
-                             <i className="ph-bold ph-magnifying-glass text-slate-500"></i>
-                             <input
-                                 type="text"
-                                 placeholder="Search participant name..."
-                                 value={searchQuery}
-                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                 className="w-full bg-transparent text-sm font-bold text-white placeholder-slate-600 focus:outline-none"
-                             />
-                         </div>
+            {/* 📸 COMPACT SQUARE CAMERA VIEWPORT (Shows for Meal Mode, OR if someone is selected in Pairing Mode) */}
+            {(mode === 'meal' || (mode === 'pairing' && selectedParticipant)) && (
+                <>
+                    {/* Targeting Prompt Overlay for Pairing Mode */}
+                    {mode === 'pairing' && selectedParticipant && (
+                        <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 flex items-center justify-between shadow-inner animate-enter">
+                            <div className="truncate pr-4">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400 block mb-1">Target Participant</span>
+                                <span className="text-sm font-bold text-white truncate block">{selectedParticipant.name}</span>
+                            </div>
+                            <button 
+                                onClick={() => { setSelectedParticipant(null); if(isScanning) stopScanner(); }}
+                                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                            >
+                                <i className="ph-bold ph-x"></i>
+                            </button>
+                        </div>
+                    )}
 
-                         <div className="overflow-y-auto flex-1 space-y-2 pr-2 custom-scrollbar">
-                             {unassignedParticipants.length === 0 ? (
-                                 <div className="text-center py-10 border border-dashed border-white/10 rounded-2xl">
-                                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">No matches found</p>
-                                     <p className="text-slate-600 text-xs">All matching participants already have badges.</p>
-                                 </div>
-                             ) : (
-                                 unassignedParticipants.map(p => (
-                                     <div key={p._id} className="flex items-center justify-between bg-black/40 p-3 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition-colors">
-                                         <div className="truncate mr-4">
-                                             <p className="text-sm font-bold text-white truncate">{p.name}</p>
-                                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest truncate">{p.category || 'Participant'}</p>
-                                         </div>
-                                         <button
-                                             onClick={() => handlePairBadge(p._id)}
-                                             disabled={isPairing}
-                                             className="shrink-0 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500 hover:text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
-                                         >
-                                             {isPairing ? '...' : 'Assign'}
-                                         </button>
-                                     </div>
-                                 ))
-                             )}
-                         </div>
+                    <div className={`relative w-[85%] max-w-[320px] mx-auto aspect-square bg-slate-950 rounded-[2rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border ${mode === 'pairing' ? 'border-indigo-500/50 ring-indigo-500/20' : 'border-white/10 ring-white/5'} ring-1 mt-8`}>
+                        
+                        <div id="reader" className="w-full h-full object-cover"></div>
 
-                         <button
-                             onClick={() => { 
-                                setPendingBadge(null); 
-                                if (scannerRef.current && isScanning) scannerRef.current.resume(); 
-                             }}
-                             className="w-full mt-4 py-4 text-slate-400 font-black uppercase text-[11px] tracking-widest hover:bg-white/5 rounded-2xl transition-colors shrink-0"
-                         >
-                             Cancel
-                         </button>
-                     </div>
-                </div>
+                        {isScanning && (
+                            <>
+                                <div className="absolute left-6 right-6 scanner-laser z-20 pointer-events-none"></div>
+                                <div className="absolute top-6 left-6 w-10 h-10 border-t-2 border-l-2 border-white/30 rounded-tl-2xl z-10 pointer-events-none"></div>
+                                <div className="absolute top-6 right-6 w-10 h-10 border-t-2 border-r-2 border-white/30 rounded-tr-2xl z-10 pointer-events-none"></div>
+                                <div className="absolute bottom-6 left-6 w-10 h-10 border-b-2 border-l-2 border-white/30 rounded-bl-2xl z-10 pointer-events-none"></div>
+                                <div className="absolute bottom-6 right-6 w-10 h-10 border-b-2 border-r-2 border-white/30 rounded-br-2xl z-10 pointer-events-none"></div>
+                                
+                                {mode === 'pairing' && (
+                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-indigo-500/90 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg z-30 animate-pulse">
+                                        Scan Blank Badge Now
+                                    </div>
+                                )}
+                            </>
+                        )}
+                        
+                        {!isScanning && (
+                            <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-900/80 backdrop-blur-md">
+                                <button onClick={startScanner} className="group flex flex-col items-center outline-none">
+                                    <div className={`w-20 h-20 bg-white/5 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/10 transition-all duration-500 group-hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(0,0,0,0.3)] ${mode === 'pairing' ? 'group-hover:bg-indigo-500/20' : 'group-hover:bg-teal-500/20'}`}>
+                                        <i className={`ph-light ph-camera text-3xl transition-colors ${mode === 'pairing' ? 'text-indigo-400' : 'text-teal-400'}`}></i>
+                                    </div>
+                                    <span className="mt-5 text-[10px] font-semibold tracking-[0.25em] text-slate-300 uppercase">
+                                        Activate Lens
+                                    </span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {isScanning && (
+                        <div className="flex justify-center mt-6">
+                            <button onClick={stopScanner} className="bg-slate-900/80 backdrop-blur-xl border border-white/10 text-white/90 px-8 py-4 rounded-full text-[10px] font-semibold tracking-widest uppercase flex items-center gap-3 hover:bg-rose-500/90 hover:border-rose-500 active:scale-95 transition-all shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+                                <div className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-pulse"></div>
+                                Close Lens
+                            </button>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* 💎 Standard Scan Result Modal */}
-            {scanResult && !pendingBadge && (
+            {scanResult && (
                 <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-slate-950/40 backdrop-blur-lg pb-6 px-4 animate-enter overflow-y-auto">
                     <div className="w-full h-full absolute inset-0 cursor-pointer" onClick={closeResult}></div>
                     
@@ -354,7 +363,11 @@ const Scanner = () => {
                         <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-48 h-32 blur-[60px] pointer-events-none rounded-full ${scanResult.type === 'success' ? (mode === 'pairing' ? 'bg-indigo-500/20' : 'bg-teal-500/20') : 'bg-rose-500/20'}`}></div>
 
                         <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 border relative z-10 shadow-inner shrink-0 ${scanResult.type === 'success' ? (mode === 'pairing' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-teal-500/10 border-teal-500/20 text-teal-400') : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
-                            <i className={`ph-light text-4xl ${scanResult.type === 'success' ? 'ph-check' : 'ph-x'}`}></i>
+                            {isPairing ? (
+                                <i className="ph-bold ph-spinner animate-spin text-4xl"></i>
+                            ) : (
+                                <i className={`ph-light text-4xl ${scanResult.type === 'success' ? 'ph-check' : 'ph-x'}`}></i>
+                            )}
                         </div>
 
                         <h2 className="text-2xl font-light text-white mb-2 tracking-wide relative z-10 text-center">
@@ -392,9 +405,10 @@ const Scanner = () => {
                         
                         <button 
                             onClick={closeResult} 
-                            className={`w-full py-5 text-white font-semibold tracking-[0.2em] uppercase text-[11px] rounded-[1.5rem] active:scale-95 transition-all shadow-lg relative z-10 shrink-0 ${scanResult.type === 'success' ? (mode === 'pairing' ? 'bg-indigo-500/90 hover:bg-indigo-400' : 'bg-teal-500/90 hover:bg-teal-400') : 'bg-rose-500/90 hover:bg-rose-400'}`}
+                            disabled={isPairing}
+                            className={`w-full py-5 text-white font-semibold tracking-[0.2em] uppercase text-[11px] rounded-[1.5rem] active:scale-95 transition-all shadow-lg relative z-10 shrink-0 ${isPairing ? 'bg-slate-800 text-slate-500' : scanResult.type === 'success' ? (mode === 'pairing' ? 'bg-indigo-500/90 hover:bg-indigo-400' : 'bg-teal-500/90 hover:bg-teal-400') : 'bg-rose-500/90 hover:bg-rose-400'}`}
                         >
-                            Continue
+                            {isPairing ? 'Processing...' : 'Continue'}
                         </button>
                     </div>
                 </div>
