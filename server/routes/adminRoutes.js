@@ -3,18 +3,20 @@ const router = express.Router();
 const { 
     getSettings, updateSettings, 
     bulkUploadParticipants, 
-    getAllUsers, updateUserRole, deleteUser, 
-    generateBulkBadges, 
-    pairBadge,
-    updateParticipant,   
-    deleteParticipant,
-    purgeDatabase 
+    getAllUsers, updateUserRole, deleteUser,
+    generateBulkBadges, pairBadge,
+    updateParticipant, deleteParticipant, purgeDatabase,
+    getAllParticipants // <-- Fetches the roster for the scanner search box
 } = require('../controllers/adminController');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
-// 🔓 1. READ-ONLY SETTINGS (Above the Admin Wall)
-// Volunteers need to access this so their scanners can ping the lock status
+// =========================================================================
+// 🔓 1. VOLUNTEER ZONE (Above the Admin Wall)
+// Volunteers need these routes to run the registration desk and check locks
+// =========================================================================
 router.get('/settings', protect, getSettings);
+router.post('/pair-badge', protect, pairBadge); 
+router.get('/participants', protect, getAllParticipants); 
 
 // =========================================================================
 // 🔒 2. THE ADMIN WALL 
@@ -37,7 +39,6 @@ router.delete('/users/:id', deleteUser);
 
 // Secure Hardware Token Engine
 router.get('/generate-badges', generateBulkBadges);
-router.post('/pair-badge', pairBadge);
 
 // God Mode Controls
 router.route('/participants/:id')
