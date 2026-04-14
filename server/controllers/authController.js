@@ -215,3 +215,25 @@ exports.googleLogin = async (req, res) => {
         res.status(500).json({ message: 'Failed to authenticate with Google.' });
     }
 };
+
+// --- 🔄 NEW: FETCH CURRENT USER (For Polling) 🔄 ---
+// @desc    Get current user profile
+// @route   GET /api/auth/me
+exports.getMe = async (req, res) => {
+    try {
+        // req.user is attached by your 'protect' middleware
+        const userId = req.user._id || req.user.id; 
+        
+        const user = await User.findById(userId).select('-password');
+        
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Returns { user: { _id, email, role, ... } }
+        res.status(200).json({ user }); 
+    } catch (error) {
+        console.error("GetMe Error:", error);
+        res.status(500).json({ message: "Error fetching user status" });
+    }
+};

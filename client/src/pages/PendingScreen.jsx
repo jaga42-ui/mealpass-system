@@ -15,16 +15,18 @@ const PendingScreen = () => {
     }
 
     // 🔄 SHORT POLLING LOGIC 🔄
-    // Ping the backend every 5 seconds to check if the admin changed their role
     const intervalId = setInterval(async () => {
       try {
-        // Change '/auth/me' to whatever your backend route is for getting the current user profile
-        const response = await api.get('/auth/me'); 
+        // 🛑 THE FIX: We add a timestamp query to bust the browser cache!
+        // This forces the browser to fetch fresh data from the server every single time.
+        const response = await api.get(`/auth/me?t=${new Date().getTime()}`); 
         const latestUserData = response.data.user;
+
+        console.log("Polling Check: Current Role is", latestUserData.role); // Debugging log
 
         if (latestUserData.role !== 'pending') {
           // 🎉 THE ADMIN APPROVED THEM! 🎉
-          clearInterval(intervalId); // Stop polling
+          clearInterval(intervalId); // Stop polling immediately
           
           // Update Local Storage
           localStorage.setItem('mealpass_user', JSON.stringify(latestUserData));
@@ -36,7 +38,8 @@ const PendingScreen = () => {
           navigate('/scan'); 
         }
       } catch (error) {
-        console.error("Failed to fetch user status:", error);
+        // If this logs a 404, your backend route isn't set up right!
+        console.error("Failed to fetch user status. Is /auth/me working?", error);
       }
     }, 5000); // 5000ms = 5 seconds
 
