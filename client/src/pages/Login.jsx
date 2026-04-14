@@ -1,11 +1,16 @@
 import { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { useGoogleLogin } from '@react-oauth/google';
 import api from '../api/axios';
 
 const Login = () => {
-  const [isSignup, setIsSignup] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Read state from location (defaults to false if arriving directly)
+  const [isSignup, setIsSignup] = useState(location.state?.isSignup || false);
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +23,6 @@ const Login = () => {
   const [forgotMsg, setForgotMsg] = useState(null);
 
   const { login, register } = useContext(AuthContext);
-  const navigate = useNavigate();
 
   // --- 🌐 GOOGLE OAUTH LOGIC 🌐 ---
   const handleGoogleAuth = useGoogleLogin({
@@ -26,14 +30,19 @@ const Login = () => {
         setLoading(true);
         setError('');
         try {
-            // Send the Google token to our backend
             const res = await api.post('/auth/google', { access_token: tokenResponse.access_token });
+            const user = res.data.user;
+
+            // 🛑 THE FIX: Intercept pending Google users before saving tokens
+            if (user.status === 'pending') {
+                setError('Account registered via Google. Please wait for Admin approval.');
+                setLoading(false);
+                return; // Stop the execution here! Do not route to /scan.
+            }
             
-            // 🚀 THE FIX: Save BOTH the token and the user data to LocalStorage!
             localStorage.setItem('mealpass_token', res.data.token);
-            localStorage.setItem('mealpass_user', JSON.stringify(res.data.user)); 
+            localStorage.setItem('mealpass_user', JSON.stringify(user)); 
             
-            // Force a reload to let AuthContext pick up the new token and route to /scan
             window.location.href = '/scan'; 
         } catch (err) {
             setError(err.response?.data?.message || 'Google authentication failed.');
@@ -54,11 +63,19 @@ const Login = () => {
         await register(email, password);
         setIsSignup(false);
         setError('');
-        alert("Account created successfully! Please log in.");
+        alert("Account created successfully! Please wait for admin approval before logging in.");
       } else {
         await login(email, password);
-        // Safely navigate to the scanner hub
-        navigate('/scan'); 
+        
+        // 🛑 THE FIX: Read the user data that AuthContext just saved to local storage
+        const storedUser = JSON.parse(localStorage.getItem('mealpass_user'));
+
+        if (storedUser && storedUser.status === 'pending') {
+            setError('Your account is still pending Admin approval.');
+            // Note: If you have a logout function in AuthContext, you should call it here to clear the token.
+        } else {
+            navigate('/scan'); 
+        }
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Authentication failed. Please try again.');
