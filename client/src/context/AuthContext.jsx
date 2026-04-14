@@ -10,11 +10,20 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const checkLoggedIn = () => {
-            const storedUser = localStorage.getItem('mealpass_user');
+            const storedUserStr = localStorage.getItem('mealpass_user');
             const token = localStorage.getItem('mealpass_token');
             
-            if (storedUser && token) {
-                setUser(JSON.parse(storedUser));
+            if (storedUserStr && token) {
+                const storedUser = JSON.parse(storedUserStr);
+                
+                // 🛑 Gatekeeper on Load: Boot them if they are still pending
+                if (storedUser.status === 'pending') {
+                    localStorage.removeItem('mealpass_token');
+                    localStorage.removeItem('mealpass_user');
+                    setUser(null);
+                } else {
+                    setUser(storedUser);
+                }
             }
             setLoading(false);
         };
@@ -23,9 +32,18 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         const response = await api.post('/auth/login', { email, password });
+        const userData = response.data.user;
+
+        // 🛑 Gatekeeper on Login: Throw an error BEFORE saving the session
+        if (userData.status === 'pending') {
+            // Throwing an error here triggers the 'catch' block in your Login.jsx
+            throw new Error('Your account is still pending Admin approval.');
+        }
+
+        // If they pass the check, save the session and log them in
         localStorage.setItem('mealpass_token', response.data.token);
-        localStorage.setItem('mealpass_user', JSON.stringify(response.data.user));
-        setUser(response.data.user);
+        localStorage.setItem('mealpass_user', JSON.stringify(userData));
+        setUser(userData);
         return response.data;
     };
 
