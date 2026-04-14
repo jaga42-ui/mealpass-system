@@ -87,7 +87,6 @@ const Login = () => {
   };
 
   return (
-    // 👇 Scroll-lock removed! Replaced with min-h-screen and overflow-y-auto 👇
     <div className="min-h-screen w-full bg-gradient-to-br from-teal-950 via-teal-900 to-slate-900 flex items-center justify-center p-6 py-12 font-sans relative overflow-x-hidden overflow-y-auto">
       
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-teal-500/20 rounded-full blur-[100px]"></div>
@@ -97,13 +96,13 @@ const Login = () => {
         
         <div className="text-center mb-10">
           <div className="w-20 h-20 mx-auto bg-teal-500/10 border border-teal-500/30 backdrop-blur-xl rounded-[1.5rem] flex items-center justify-center shadow-[0_0_30px_rgba(20,184,166,0.2)] mb-6 animate-float">
-            <i className="ph-duotone ph-lock-key text-4xl text-teal-400"></i>
+            <i className="ph-duotone ph-bowl-food text-4xl text-teal-400"></i>
           </div>
           <h1 className="text-4xl font-black text-white tracking-wide">
-            Access<span className="text-teal-400">Pro</span>
+            Aahaaram
           </h1>
           <p className="text-teal-200/60 font-medium mt-2 text-sm uppercase tracking-[0.2em]">
-            Secure Terminal Login
+            {isSignup ? 'Create Account' : 'Welcome Back'}
           </p>
         </div>
 
@@ -135,14 +134,14 @@ const Login = () => {
 
           <div className="space-y-2">
             <label className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest ml-3">
-              Email Access
+              Email
             </label>
             <input 
               type="email" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-5 font-bold text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner" 
-              placeholder="admin@example.com"
+              placeholder="user@example.com"
               required={!isSignup}
             />
           </div>
@@ -150,7 +149,7 @@ const Login = () => {
           <div className="space-y-1">
             <div className="flex justify-between items-center ml-3 mr-1">
               <label className="text-[10px] font-black text-teal-200/70 uppercase tracking-widest">
-                Security Key
+                Password
               </label>
               
               {!isSignup && (
@@ -159,7 +158,7 @@ const Login = () => {
                   onClick={() => { setShowForgotModal(true); setForgotMsg(null); }}
                   className="text-[9px] font-black text-slate-400 hover:text-teal-300 uppercase tracking-widest transition-colors"
                 >
-                  Lost Key?
+                  Forgot Password?
                 </button>
               )}
             </div>
@@ -181,7 +180,7 @@ const Login = () => {
             className={`w-full py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 font-black tracking-wide mt-2 ${loading ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)] active:scale-95 translate-y-[-2px] active:translate-y-[0px]'}`}
           >
             <span>
-              {loading ? 'Processing...' : (isSignup ? 'Create Account' : 'Authenticate')}
+              {loading ? 'Loading...' : (isSignup ? 'Sign Up' : 'Log In')}
             </span> 
             {!loading && <i className="ph-bold ph-arrow-right text-lg"></i>}
           </button>
@@ -195,7 +194,7 @@ const Login = () => {
               }} 
               className="text-[11px] font-black text-slate-400 hover:text-teal-300 uppercase tracking-widest transition-colors"
             >
-              {isSignup ? 'Back to Email Login' : 'Create New Account'}
+              {isSignup ? 'Back to Login' : 'Create Account'}
             </button>
           </div>
         </form>
@@ -212,9 +211,9 @@ const Login = () => {
               <div className="w-16 h-16 mx-auto bg-teal-500/10 border border-teal-500/30 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(20,184,166,0.2)] mb-4">
                 <i className="ph-duotone ph-envelope-simple-open text-3xl text-teal-400"></i>
               </div>
-              <h2 className="text-2xl font-black text-white tracking-wide">Recover Access</h2>
+              <h2 className="text-2xl font-black text-white tracking-wide">Reset Password</h2>
               <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2">
-                We will send a secure reset link
+                Enter your email to receive a reset link
               </p>
             </div>
 
@@ -230,7 +229,7 @@ const Login = () => {
                 value={forgotEmail}
                 onChange={(e) => setForgotEmail(e.target.value)}
                 className="w-full bg-slate-950/50 border border-white/10 rounded-2xl py-4 px-5 font-bold text-white placeholder-slate-600 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-all shadow-inner text-sm" 
-                placeholder="Enter your registered email"
+                placeholder="Email address"
                 required
               />
               
@@ -239,7 +238,7 @@ const Login = () => {
                 disabled={forgotLoading}
                 className={`w-full py-4 rounded-2xl transition-all duration-300 font-black tracking-widest uppercase text-[10px] flex items-center justify-center gap-2 ${forgotLoading ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)] active:scale-95'}`}
               >
-                {forgotLoading ? 'Transmitting...' : 'Send Recovery Link'}
+                {forgotLoading ? 'Sending...' : 'Send Link'}
               </button>
             </form>
 
@@ -247,7 +246,7 @@ const Login = () => {
               onClick={() => { setShowForgotModal(false); setForgotMsg(null); }}
               className="w-full mt-4 py-3 text-slate-500 hover:text-white font-black uppercase tracking-widest text-[10px] transition-colors relative z-10"
             >
-              Cancel Request
+              Cancel
             </button>
 
           </div>

@@ -29,22 +29,22 @@ const Landing = () => {
           A decentralized, zero-friction operating system for community kitchens, disaster relief, and large-scale meal distribution.
         </p>
 
-        {/* 🚪 Auth Actions (Strictly Org/Staff) */}
+        {/* 🚪 Auth Actions */}
         <div className="w-full flex flex-col gap-3 mb-16">
           <button
             onClick={() => navigate("/login")}
             className="w-full py-4 bg-emerald-600 text-white font-bold text-sm rounded-2xl shadow-[0_10px_30px_rgba(5,150,105,0.2)] hover:bg-emerald-500 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2"
           >
             <i className="ph-bold ph-sign-in text-lg"></i>
-            Staff Sign In
+            Sign In
           </button>
 
           <button
             onClick={() => navigate("/signup")}
             className="w-full py-4 bg-stone-900 text-stone-300 font-bold text-sm rounded-2xl border border-stone-800 hover:bg-stone-800 hover:text-white active:scale-95 transition-all duration-300 flex items-center justify-center gap-2"
           >
-            <i className="ph-bold ph-buildings text-lg"></i>
-            Register Organization
+            <i className="ph-bold ph-user-plus text-lg"></i>
+            Sign Up
           </button>
         </div>
 
