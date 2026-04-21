@@ -14,8 +14,20 @@ const Scanner = () => {
     // --- PAIRING MODE STATE ---
     const [participants, setParticipants] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedParticipant, setSelectedParticipant] = useState(null); // Holds the selected user BEFORE scanning
+    const [selectedParticipant, setSelectedParticipant] = useState(null);
     const [isPairing, setIsPairing] = useState(false);
+
+    // --- 📡 OFFLINE QUEUE STATE ---
+    const [offlineQueue, setOfflineQueue] = useState(() => {
+        const saved = localStorage.getItem('aahaaram_offline_queue');
+        return saved ? JSON.parse(saved) : [];
+    });
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    // 💾 Auto-save queue to phone memory
+    useEffect(() => {
+        localStorage.setItem('aahaaram_offline_queue', JSON.stringify(offlineQueue));
+    }, [offlineQueue]);
 
     // 🔄 Polling Config
     useEffect(() => {
@@ -34,6 +46,32 @@ const Scanner = () => {
         return () => clearInterval(intervalId);
     }, []);
 
+    // 📡 The Sync Engine (Runs when internet comes back)
+    const syncOfflineQueue = async () => {
+        if (offlineQueue.length === 0 || isSyncing || !navigator.onLine) return;
+        
+        setIsSyncing(true);
+        const failedSyncs = [];
+
+        for (const scan of offlineQueue) {
+            try {
+                await api.post('/scans/verify', scan);
+            } catch (err) {
+                // If network fails again, keep it. If it's a real error (like 409), discard it.
+                if (!err.response) failedSyncs.push(scan); 
+            }
+        }
+
+        setOfflineQueue(failedSyncs);
+        setIsSyncing(false);
+    };
+
+    // Listen for Wi-Fi reconnection
+    useEffect(() => {
+        window.addEventListener('online', syncOfflineQueue);
+        return () => window.removeEventListener('online', syncOfflineQueue);
+    }, [offlineQueue]);
+
     // Fetch Participants when switching to Pairing Mode
     useEffect(() => {
         if (mode === 'pairing' && participants.length === 0) {
@@ -47,6 +85,45 @@ const Scanner = () => {
     useEffect(() => {
         if (config.isScannerLocked && isScanning) stopScanner();
     }, [config.isScannerLocked, isScanning]);
+
+    // --- 🔊 AUDIO & HAPTIC FEEDBACK ---
+    const playFeedback = (type) => {
+        try {
+            if (navigator.vibrate) {
+                if (type === 'success') navigator.vibrate(100);
+                else if (type === 'error') navigator.vibrate([200, 100, 200]);
+                else if (type === 'offline') navigator.vibrate([100, 50, 100]);
+            }
+
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            if (type === 'success') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                osc.start(); osc.stop(ctx.currentTime + 0.2);
+            } else if (type === 'error') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, ctx.currentTime);
+                gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                osc.start(); osc.stop(ctx.currentTime + 0.3);
+            } else if (type === 'offline') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(500, ctx.currentTime);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                osc.start(); osc.stop(ctx.currentTime + 0.2);
+            }
+        } catch (e) {
+            console.log("Audio feedback not supported or interacted yet.");
+        }
+    };
 
     const startScanner = async () => {
         if (config.isScannerLocked) return; 
@@ -80,29 +157,42 @@ const Scanner = () => {
     const onScanSuccess = async (decodedText) => {
         if (scannerRef.current) scannerRef.current.pause();
 
-        // 🟢 BRANCH 1: REGISTRATION MODE (Badge scanned AFTER participant is selected)
+        // 🟢 BRANCH 1: REGISTRATION MODE
         if (mode === 'pairing') {
             if (!decodedText.includes('-')) {
+                playFeedback('error');
                 setScanResult({ type: 'error', title: 'Invalid Badge', message: 'This is not a valid blank Aahaaram badge. Cannot link.' });
                 return;
             }
-            // Trigger the pairing API immediately
             await handlePairBadge(selectedParticipant._id, decodedText);
             return;
         }
 
-        // 🔵 BRANCH 2: MEAL QUEUE MODE (Standard Scanning)
+        // 🔵 BRANCH 2: MEAL QUEUE MODE
         try {
             let payload = {};
             try {
                 const parsedData = JSON.parse(decodedText);
-                payload = { qrId: parsedData.qrId, totp: parsedData.totp, mealType: config.activeMeal };
+                payload = { qrId: parsedData.qrId, totp: parsedData.totp, mealType: config.activeMeal, scannedAt: new Date().toISOString() };
             } catch (e) {
-                payload = { qrId: decodedText.trim().toUpperCase(), mealType: config.activeMeal };
+                payload = { qrId: decodedText.trim().toUpperCase(), mealType: config.activeMeal, scannedAt: new Date().toISOString() };
+            }
+
+            // 📡 Check if offline before sending
+            if (!navigator.onLine) {
+                setOfflineQueue(prev => [...prev, payload]);
+                playFeedback('offline');
+                return setScanResult({
+                    type: 'offline',
+                    title: 'Saved Offline',
+                    message: 'No internet. Scan saved to device memory.',
+                    participant: { name: payload.qrId }
+                });
             }
             
             const response = await api.post('/scans/verify', payload);
 
+            playFeedback('success');
             setScanResult({
                 type: 'success',
                 title: 'Access Approved',
@@ -111,6 +201,20 @@ const Scanner = () => {
             });
 
         } catch (error) {
+            // 📡 Catch Network Errors gracefully
+            if (!error.response) {
+                let payload = { qrId: decodedText.trim().toUpperCase(), mealType: config.activeMeal, scannedAt: new Date().toISOString() };
+                setOfflineQueue(prev => [...prev, payload]);
+                playFeedback('offline');
+                return setScanResult({
+                    type: 'offline',
+                    title: 'Saved Offline',
+                    message: 'Connection lost. Scan saved to device memory.',
+                    participant: { name: payload.qrId }
+                });
+            }
+
+            playFeedback('error');
             const errorMsg = error.response?.data?.message || "Unrecognized signature";
             setScanResult({
                 type: 'error',
@@ -134,13 +238,10 @@ const Scanner = () => {
         setIsPairing(true);
         try {
             const res = await api.post('/admin/pair-badge', { participantId, qrString });
-            
-            // Remove the newly assigned participant from our local list
             setParticipants(prev => prev.filter(p => p._id !== participantId));
-            
-            // Reset the selection so they can search for the next person
             setSelectedParticipant(null);
             
+            playFeedback('success');
             setScanResult({
                 type: 'success',
                 title: 'Badge Linked!',
@@ -148,6 +249,7 @@ const Scanner = () => {
                 participant: res.data.participant
             });
         } catch (err) {
+            playFeedback('error');
             setScanResult({
                 type: 'error',
                 title: 'Pairing Failed',
@@ -158,7 +260,6 @@ const Scanner = () => {
         }
     };
 
-    // Filter unassigned participants
     const unassignedParticipants = participants.filter(p => 
         !p.qrId && p.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -195,6 +296,14 @@ const Scanner = () => {
     return (
         <div className="w-full max-w-md mx-auto relative z-20 pb-10 space-y-6">
             
+            {/* 📡 Pending Sync Indicator */}
+            {offlineQueue.length > 0 && (
+                <div className="fixed top-4 right-4 bg-amber-500 text-slate-900 text-[10px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.4)] animate-pulse z-[200]">
+                    <i className="ph-bold ph-wifi-slash"></i>
+                    {offlineQueue.length} Pending Sync
+                </div>
+            )}
+
             {/* DYNAMIC LASER CSS */}
             <style>{`
                 @keyframes laserSweep {
@@ -243,7 +352,7 @@ const Scanner = () => {
                 </div>
             </div>
 
-            {/* 🔗 THE ROSTER SEARCH UI (Only shows when Pairing mode is active AND no one is selected) */}
+            {/* 🔗 THE ROSTER SEARCH UI */}
             {mode === 'pairing' && !selectedParticipant && (
                 <div className="w-full bg-slate-900/60 backdrop-blur-xl border border-indigo-500/30 rounded-[2.5rem] p-6 shadow-2xl flex flex-col h-[60vh] animate-enter">
                     <h2 className="text-xl font-black text-white mb-1 shrink-0">Find Participant</h2>
@@ -289,10 +398,9 @@ const Scanner = () => {
             )}
 
 
-            {/* 📸 COMPACT SQUARE CAMERA VIEWPORT (Shows for Meal Mode, OR if someone is selected in Pairing Mode) */}
+            {/* 📸 COMPACT SQUARE CAMERA VIEWPORT */}
             {(mode === 'meal' || (mode === 'pairing' && selectedParticipant)) && (
                 <>
-                    {/* Targeting Prompt Overlay for Pairing Mode */}
                     {mode === 'pairing' && selectedParticipant && (
                         <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 flex items-center justify-between shadow-inner animate-enter">
                             <div className="truncate pr-4">
@@ -360,13 +468,25 @@ const Scanner = () => {
                     
                     <div className="relative w-full max-w-md mx-auto bg-slate-900/95 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden p-8 flex flex-col items-center my-auto max-h-[90vh] overflow-y-auto no-scrollbar">
                         
-                        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-48 h-32 blur-[60px] pointer-events-none rounded-full ${scanResult.type === 'success' ? (mode === 'pairing' ? 'bg-indigo-500/20' : 'bg-teal-500/20') : 'bg-rose-500/20'}`}></div>
+                        <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-48 h-32 blur-[60px] pointer-events-none rounded-full ${
+                            scanResult.type === 'success' ? (mode === 'pairing' ? 'bg-indigo-500/20' : 'bg-teal-500/20') 
+                            : scanResult.type === 'offline' ? 'bg-amber-500/20' 
+                            : 'bg-rose-500/20'
+                        }`}></div>
 
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 border relative z-10 shadow-inner shrink-0 ${scanResult.type === 'success' ? (mode === 'pairing' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-teal-500/10 border-teal-500/20 text-teal-400') : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 border relative z-10 shadow-inner shrink-0 ${
+                            scanResult.type === 'success' ? (mode === 'pairing' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-teal-500/10 border-teal-500/20 text-teal-400') 
+                            : scanResult.type === 'offline' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+                            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                        }`}>
                             {isPairing ? (
                                 <i className="ph-bold ph-spinner animate-spin text-4xl"></i>
                             ) : (
-                                <i className={`ph-light text-4xl ${scanResult.type === 'success' ? 'ph-check' : 'ph-x'}`}></i>
+                                <i className={`ph-light text-4xl ${
+                                    scanResult.type === 'success' ? 'ph-check' 
+                                    : scanResult.type === 'offline' ? 'ph-wifi-slash' 
+                                    : 'ph-x'
+                                }`}></i>
                             )}
                         </div>
 
@@ -406,7 +526,12 @@ const Scanner = () => {
                         <button 
                             onClick={closeResult} 
                             disabled={isPairing}
-                            className={`w-full py-5 text-white font-semibold tracking-[0.2em] uppercase text-[11px] rounded-[1.5rem] active:scale-95 transition-all shadow-lg relative z-10 shrink-0 ${isPairing ? 'bg-slate-800 text-slate-500' : scanResult.type === 'success' ? (mode === 'pairing' ? 'bg-indigo-500/90 hover:bg-indigo-400' : 'bg-teal-500/90 hover:bg-teal-400') : 'bg-rose-500/90 hover:bg-rose-400'}`}
+                            className={`w-full py-5 text-white font-semibold tracking-[0.2em] uppercase text-[11px] rounded-[1.5rem] active:scale-95 transition-all shadow-lg relative z-10 shrink-0 ${
+                                isPairing ? 'bg-slate-800 text-slate-500' 
+                                : scanResult.type === 'success' ? (mode === 'pairing' ? 'bg-indigo-500/90 hover:bg-indigo-400' : 'bg-teal-500/90 hover:bg-teal-400') 
+                                : scanResult.type === 'offline' ? 'bg-amber-500/90 hover:bg-amber-400' 
+                                : 'bg-rose-500/90 hover:bg-rose-400'
+                            }`}
                         >
                             {isPairing ? 'Processing...' : 'Continue'}
                         </button>

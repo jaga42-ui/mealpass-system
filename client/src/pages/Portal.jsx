@@ -8,7 +8,7 @@ const Portal = () => {
 
     // 1. Load data from LocalStorage on mount
     useEffect(() => {
-        const storedData = localStorage.getItem('accesspro_portal'); // Updated to new key
+        const storedData = localStorage.getItem('Aahaaram'); // Updated to new key
         if (!storedData) {
             navigate('/pass');
             return;
@@ -17,7 +17,7 @@ const Portal = () => {
     }, [navigate]);
 
     const handleLogout = () => {
-        localStorage.removeItem('accesspro_portal');
+        localStorage.removeItem('Aahaaram');
         navigate('/pass');
     };
 
