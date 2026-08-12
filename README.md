@@ -8,6 +8,10 @@
   <img alt="JWT" src="https://img.shields.io/badge/JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white">
 </p>
 
+<p align="center">
+  <a href="https://mealpass-portal.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/live_demo-mealpass--portal.vercel.app-0B7285?style=for-the-badge&logo=vercel&logoColor=white"></a>
+</p>
+
 ## The problem
 
 Feeding a few thousand people at a college fest usually means paper coupons. Coupons
