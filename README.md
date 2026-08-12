@@ -149,5 +149,4 @@ the admin dashboard during service are the two worth showing._
 
 ## Licence
 
-No licence file yet. Until one is added, default copyright applies and others cannot
-legally reuse this code — add MIT if you want it to be usable.
+[MIT](LICENSE) © Guruprasad Jena
